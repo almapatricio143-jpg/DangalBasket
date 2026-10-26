@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Profile settings · DangalBasket{% endblock %}
+{% block content %}
+<section class="profile-page profile-settings">
+  <div class="profile-heading">
+    <span class="eyebrow">YOUR ACCOUNT</span>
+    <h1>Profile settings</h1>
+    <p>Manage the details shown on your public profile.</p>
+  </div>
+
+  <section class="profile-card profile-preview-card" aria-label="Profile preview">
+    <div class="avatar avatar-large profile-preview-avatar" aria-label="Profile photo preview">
+      {% if has_avatar %}
+        <img data-profile-preview-image src="{{ url_for('profile_photo', filename=user['avatar_filename']) }}" alt="Preview of your profile photo">
+        <span class="profile-preview-initial" data-profile-preview-initial aria-hidden="true" hidden>{{ user["full_name"][:1]|upper }}</span>
+      {% else %}
+        <img data-profile-preview-image alt="Preview of your profile photo" hidden>
+        <span class="profile-preview-initial" data-profile-preview-initial aria-hidden="true">{{ user["full_name"][:1]|upper }}</span>
+      {% endif %}
+    </div>
+    <div class="profile-identity">
+      <span class="eyebrow">PROFILE PREVIEW</span>
+      <h2 data-profile-preview-name>{{ user["full_name"] }}</h2>
+      <p>@{{ user["username"] }} <span class="role-pill">{{ user["role"]|title }}</span></p>
+      <p class="profile-preview-bio" data-profile-preview-bio {% if not user["bio"] %}hidden{% endif %}>{{ user["bio"] }}</p>
+      <a class="text-link" href="{{ url_for('public_profile', username=user['username']) }}">View public profile →</a>
+    </div>
+  </section>
+
+  <form method="post" action="{{ url_for('profile') }}" enctype="multipart/form-data" data-profile-details-form>
+    {{ name_form.hidden_tag() }}
+    <div class="settings-grid profile-settings-grid">
+      <section class="settings-card profile-settings-card">
+        <div class="profile-section-heading">
+          <h2>Personal details</h2>
+          <p>Update the name and bio shown to other members.</p>
+        </div>
+        <div class="field profile-field">
+          {{ name_form.full_name.label }}
+          {{ name_form.full_name(class_="input", value=name_form.full_name.data or user["full_name"], autocomplete="name", required=true, maxlength=120, **{"data-profile-name": "true", "aria-describedby": "profile-name-errors"}) }}
+          <span class="profile-field-errors" id="profile-name-errors" aria-live="polite">
+            {% for error in name_form.full_name.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </span>
+        </div>
+        <div class="field profile-field">
+          {{ name_form.bio.label }}
+          {{ name_form.bio(class_="input", rows=4, maxlength=600, placeholder="Tell the PNC community a little about yourself", **{"data-profile-bio": "true", "aria-describedby": "profile-bio-hint profile-bio-count profile-bio-errors"}) }}
+          <div class="profile-bio-meta">
+            <span class="field-hint" id="profile-bio-hint">This appears on your public profile.</span>
+            <span class="profile-bio-count" id="profile-bio-count" aria-live="polite">{{ (name_form.bio.data or "")|length }} / 300</span>
+          </div>
+          <span class="profile-field-errors" id="profile-bio-errors" aria-live="polite">
+            {% for error in name_form.bio.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </span>
+        </div>
+        <button class="primary-button settings-button profile-save-button" type="submit" disabled>{{ name_form.submit.label.text }}</button>
+      </section>
+
+      <section class="settings-card profile-settings-card profile-photo-card">
+        <div class="profile-section-heading">
+          <h2>Profile photo</h2>
+          <p>Choose a JPG, PNG, or WEBP image. Maximum file size: {{ avatar_size_limit }}.</p>
+        </div>
+        <div class="field profile-field">
+          {{ photo_form.photo.label(class_="profile-photo-label") }}
+          <div class="profile-file-picker">
+            {{ photo_form.photo(class_="profile-file-input", accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp", **{"aria-describedby": "profile-photo-help profile-photo-selection profile-photo-errors", "data-max-bytes": avatar_max_bytes, "data-max-bytes-label": avatar_size_limit, "data-profile-photo-input": "true"}) }}
+            <label class="secondary-action profile-choose-photo" for="{{ photo_form.photo.id }}">{% if has_avatar %}Change photo{% else %}Choose photo{% endif %}</label>
+            <span class="profile-photo-selection" id="profile-photo-selection" data-profile-photo-selection>No file selected</span>
+            <button class="profile-clear-photo" type="button" data-profile-photo-clear hidden>Clear selection</button>
+          </div>
+          <span class="field-hint" id="profile-photo-help">JPG, PNG, or WEBP · Up to {{ avatar_size_limit }}</span>
+          <span class="profile-field-errors" id="profile-photo-errors" aria-live="polite">
+            {% for error in photo_form.photo.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+            {% if photo_error %}<span class="field-error">{{ photo_error }}</span>{% endif %}
+          </span>
+        </div>
+        {% if has_avatar %}
+          <button class="secondary-button profile-remove-button" type="submit" form="profile-photo-remove-form">Remove profile photo</button>
+        {% endif %}
+      </section>
+    </div>
+    <p class="profile-unsaved-note" data-profile-unsaved role="status" hidden>You have unsaved changes.</p>
+    <p class="profile-photo-state" data-profile-photo-state role="status" aria-live="polite"></p>
+  </form>
+  {% if has_avatar %}
+    <form id="profile-photo-remove-form" method="post" action="{{ url_for('remove_profile_photo') }}" data-profile-photo-remove hidden>
+      {{ remove_form.hidden_tag() }}
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

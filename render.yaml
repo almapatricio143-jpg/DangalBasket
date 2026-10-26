@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: dangal-basket
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --threads 8 --timeout 120 --access-logfile - --bind 0.0.0.0:$PORT wsgi:app
+    healthCheckPath: /healthz
+    envVars:
+      - key: DANGALBASKET_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+      - key: DANGALBASKET_DATABASE
+        value: /tmp/dangalbasket-demo/dangalbasket.sqlite3
+      - key: DANGALBASKET_UPLOAD_FOLDER
+        value: /tmp/dangalbasket-demo/profile-photos
+      - key: DANGALBASKET_LISTING_UPLOAD_FOLDER
+        value: /tmp/dangalbasket-demo/listing-images
+      - key: DANGALBASKET_CERTIFICATE_UPLOAD_FOLDER
+        value: /tmp/dangalbasket-demo/enrollment-certificates

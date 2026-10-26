@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}{% if resubmission %}Resubmit registration{% else %}Create your account{% endif %} · DangalBasket{% endblock %}
+{% block content %}
+<section class="auth-layout">
+  <div class="auth-intro">
+    <span class="eyebrow">YOUR CAMPUS, CONNECTED</span>
+    <h1>Dangal Greetings!<br><span class="headline-brand">DANGAL BASKET</span><br>at your service.</h1>
+    <p>{% if resubmission %}Update your details and documents for administrator review.{% else %}Submit your details and supporting registration documents for administrator review. You may receive an approval or rejection notification within 48 hours.{% endif %}</p>
+    <div class="intro-note"><span aria-hidden="true">✦</span> A space made for PNC students</div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-heading">
+      <span class="eyebrow">GET STARTED</span>
+      <h2>{% if resubmission %}Resubmit registration{% else %}Create account{% endif %}</h2>
+      <p>{% if resubmission %}Correct your details or replace your documents. Marketplace access returns after approval. You may receive an approval or rejection notification within 48 hours.{% else %}Your account will be ready after an administrator reviews your enrollment. You may receive an approval or rejection notification within 48 hours.{% endif %}</p>
+    </div>
+    <form method="post" action="{{ url_for('register') }}" enctype="multipart/form-data">
+      {{ form.hidden_tag() }}
+      {% for field in [form.username, form.student_number, form.full_name, form.password, form.confirm_password] %}
+        <div class="field">
+          {{ field.label }}
+          {% if field.name == "student_number" %}
+            {{ field(class_="input", placeholder="Your student number", autocomplete="off", required=true, maxlength=30) }}
+          {% elif field.name == "password" %}
+            {{ field(class_="input", placeholder="At least 8 characters", autocomplete="new-password", required=true, minlength=8) }}
+          {% elif field.name == "confirm_password" %}
+            {{ field(class_="input", placeholder="Enter your password again", autocomplete="new-password", required=true) }}
+          {% elif field.name == "full_name" %}
+            {{ field(class_="input", placeholder="Your first and last name", autocomplete="name", required=true, maxlength=120) }}
+          {% elif field.name == "username" and resubmission %}
+            {{ field(class_="input", placeholder="Choose a username", autocomplete="username", required=true, maxlength=50, readonly=true) }}
+          {% else %}
+            {{ field(class_="input", placeholder="Choose a username", autocomplete="username", required=true, maxlength=50) }}
+          {% endif %}
+          {% for error in field.errors %}
+            <span class="field-error">{{ error }}</span>
+          {% endfor %}
+        </div>
+      {% endfor %}
+      <div class="field">
+        {{ form.certificate.label }}
+        {{ form.certificate(class_="file-input", accept="image/jpeg,image/png,image/webp", required=true, multiple=true, aria_describedby="certificate-hint") }}
+        <span class="field-hint" id="certificate-hint">Upload clear JPG, PNG, or WEBP pictures of your registration form and ID (up to {{ certificate_size_limit }} each).</span>
+        {% for error in form.certificate.errors %}
+          <span class="field-error">{{ error }}</span>
+        {% endfor %}
+      </div>
+      <button class="primary-button" type="submit">{% if resubmission %}Resubmit documents{% else %}Create my account{% endif %} <span aria-hidden="true">→</span></button>
+    </form>
+    <p class="form-switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+  </div>
+</section>
+<script src="{{ url_for('static', filename='register.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}{{ "Admin Support" if admin_view else "Contact admins" }} · DangalBasket{% endblock %}
+{% block content %}
+<section class="support-chat-page conversation-page">
+  {% if admin_view %}
+    <a class="support-back-link" href="{{ url_for('admin_support_inbox') }}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg>
+      <span>Back to support inbox</span>
+    </a>
+  {% else %}
+    <a class="support-back-link" href="{{ url_for('index') }}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg>
+      <span>Back to marketplace</span>
+    </a>
+  {% endif %}
+
+  <header class="support-chat-header">
+    {% if admin_view and avatar_is_available(conversation["user_avatar_filename"]) %}
+      <img class="support-chat-avatar"
+           src="{{ url_for('profile_photo', filename=conversation['user_avatar_filename']) }}"
+           alt="">
+    {% else %}
+      <img class="support-chat-avatar support-chat-avatar-fallback"
+           src="{{ url_for('static', filename='profile-icon.png') }}"
+           alt="">
+    {% endif %}
+    <div class="support-chat-identity">
+      <span class="eyebrow">PRIVATE SUPPORT CHAT</span>
+      <h1>{{ conversation["user_name"] if admin_view else "DangalBasket Support" }}</h1>
+      <p>{{ "@" ~ conversation["user_username"] if admin_view else "@support" }}</p>
+    </div>
+    <div class="support-chat-header-actions">
+      <span class="support-status-badge support-status-{{ conversation['status'] }}">
+        <span aria-hidden="true"></span>{{ conversation["status"]|title }}
+      </span>
+      {% if admin_view and conversation["status"] == "open" %}
+        <form method="post"
+              action="{{ url_for('admin_support_conversation', conversation_id=conversation['id']) }}">
+          {{ resolve_form.hidden_tag() }}
+          <button class="secondary-button support-resolve-button"
+                  type="submit" name="action" value="resolve"
+                  data-confirm="Mark this support conversation as resolved?">
+            Mark as resolved
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </header>
+
+  {% if not admin_view %}
+    <p class="support-privacy-note">
+      Only you and the DangalBasket administrators can see this conversation. Please do not send passwords or other sensitive information.
+    </p>
+  {% endif %}
+
+  <div class="message-thread support-chat-thread"
+       aria-label="Support messages" aria-live="polite" aria-relevant="additions">
+    {% if messages %}
+      <div class="support-chat-messages">
+        {% for message in messages %}
+          {% if message["show_day_separator"] %}
+            <div class="message-day-separator"><span>{{ message["day_label"] }}</span></div>
+          {% endif %}
+          {% set own_message = message["sender_id"] == session.get("user_id") %}
+          <article class="message-bubble support-chat-message{% if own_message %} message-own{% endif %}{% if message['grouped_after_previous'] %} message-grouped{% endif %}">
+            {% if not message["grouped_after_previous"] %}
+              <div class="support-message-sender">
+                <strong>{{ message["sender_name"] }}{% if message["sender_role"] == "admin" %} · Admin{% endif %}</strong>
+                <span>@{{ message["sender_username"] }}</span>
+              </div>
+            {% endif %}
+            <p>{{ message["body"] }}</p>
+            <time class="support-message-time">{{ message["time_label"] }}</time>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="support-chat-empty">
+        <span class="support-chat-empty-icon" aria-hidden="true">…</span>
+        <h2>No messages yet</h2>
+        <p>Send a message to start your private support conversation.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <form method="post"
+        action="{% if admin_view %}{{ url_for('admin_support_conversation', conversation_id=conversation['id']) }}{% else %}{{ url_for('support_chat') }}{% endif %}"
+        class="settings-card message-compose support-message-compose"
+        data-support-composer>
+    {{ form.hidden_tag() }}
+    <div class="field">
+      <label class="visually-hidden" for="{{ form.body.id }}">Write a message</label>
+      {{ form.body(class_="input support-message-input", rows="1", maxlength="2000", placeholder="Write a message...", required=true, aria_describedby="support-compose-hint") }}
+      {% for error in form.body.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="message-compose-actions">
+      <span class="message-send-status" data-message-send-status role="status" aria-live="polite"></span>
+      <span class="message-compose-hint" id="support-compose-hint">Enter to send · Shift+Enter for a new line</span>
+      {{ form.submit(class_="primary-button message-send support-message-send", value="Send message") }}
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Admin · Listings · DangalBasket{% endblock %}
+{% block content %}
+<section class="management-page admin-page admin-listings-page">
+  <header class="admin-page-header">
+    <div>
+      <a class="back-link" href="{{ url_for('admin_dashboard') }}">← Admin dashboard</a>
+      <h1>Listings</h1>
+      <p>Review listing details and archive content while retaining related history.</p>
+    </div>
+    <span class="admin-result-count">{{ total_listings }} result{% if total_listings != 1 %}s{% endif %}</span>
+  </header>
+  <form method="get" class="admin-filter admin-toolbar admin-listings-toolbar">
+    <label for="admin-listing-search">Search title or seller
+      <input id="admin-listing-search" class="input" type="search" name="q" value="{{ query }}" maxlength="100">
+    </label>
+    <label for="admin-listing-category">Category
+      <select id="admin-listing-category" class="input" name="category">
+        <option value="">All categories</option>
+        {% for item in categories %}<option value="{{ item }}"{% if category == item %} selected{% endif %}>{{ item }}</option>{% endfor %}
+      </select>
+    </label>
+    <label for="admin-listing-status">Status
+      <select id="admin-listing-status" class="input" name="status">
+        <option value="">All statuses</option>
+        {% for state in ["active", "sold", "removed"] %}<option value="{{ state }}"{% if status == state %} selected{% endif %}>{{ "Archived" if state == "removed" else state|title }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="primary-button" type="submit">Apply filters</button>
+  </form>
+  {% if listings %}
+    <div class="admin-table-wrap">
+      <table class="admin-data-table admin-listings-table">
+        <caption class="visually-hidden">Marketplace listings</caption>
+        <thead><tr><th scope="col">Listing</th><th scope="col">Type</th><th scope="col">Category</th><th scope="col">Seller</th><th scope="col">Price</th><th scope="col">Stock</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead>
+        <tbody>
+          {% for listing in listings %}
+            <tr>
+              <td data-label="Listing"><strong>{{ listing["title"] }}</strong><small class="admin-record-meta">#{{ listing["id"] }}</small></td>
+              <td data-label="Type">{{ listing["listing_type"]|title }}</td>
+              <td data-label="Category">{{ listing["category"] }}</td>
+              <td data-label="Seller">{{ listing["seller_name"] or listing["seller_username"] }}<small class="admin-record-meta">@{{ listing["seller_username"] }}</small></td>
+              <td data-label="Price">{{ listing["price_cents"]|money }}</td>
+              <td data-label="Stock">{% if listing["listing_type"] == "product" %}{{ listing["stock"] }}{% else %}<span aria-label="Not applicable">—</span>{% endif %}</td>
+              <td data-label="Status"><span class="admin-status-badge listing-{{ listing['status'] }}">{{ "Archived" if listing["status"] == "removed" else listing["status"]|title }}</span></td>
+              <td data-label="Actions">
+                <div class="admin-record-actions admin-listing-actions">
+                  {% if listing["status"] != "removed" %}
+                    <a class="text-link" href="{{ url_for('listing_detail', listing_id=listing['id']) }}">Open listing →</a>
+                    <form method="post" action="{{ url_for('admin_archive_listing', listing_id=listing['id']) }}" data-confirm="Archive this listing? Historical records will be preserved.">
+                      {{ archive_listing_form.hidden_tag() }}
+                      <input type="hidden" name="q" value="{{ query }}">
+                      <input type="hidden" name="category" value="{{ category }}">
+                      <input type="hidden" name="status" value="{{ status }}">
+                      <input type="hidden" name="page" value="{{ page }}">
+                      <button class="secondary-button admin-destructive-action" type="submit">Archive</button>
+                    </form>
+                  {% else %}
+                    <span class="admin-record-meta">No actions available</span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if total_pages > 1 %}
+      <nav class="admin-pagination" aria-label="Listing pages">
+        <span>Page {{ page }} of {{ total_pages }} · {{ total_listings }} listings</span>
+        <div>
+          {% if page > 1 %}<a class="secondary-action" href="{{ url_for('admin_listings', q=query, category=category, status=status, page=page - 1) }}">Previous</a>{% endif %}
+          {% if page < total_pages %}<a class="secondary-action" href="{{ url_for('admin_listings', q=query, category=category, status=status, page=page + 1) }}">Next</a>{% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state compact-empty"><h2>No listings found</h2><p>Try a different search or adjust the filters.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

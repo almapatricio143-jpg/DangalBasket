@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Admin · Transactions · DangalBasket{% endblock %}
+{% block content %}
+{% set status_labels = {
+  "pending": "Pending",
+  "confirmed": "Confirmed",
+  "preparing": "Preparing",
+  "ready_for_pickup": "Ready for pickup",
+  "completed": "Completed",
+  "cancelled": "Cancelled"
+} %}
+<section class="management-page admin-page admin-transactions-page">
+  <header class="admin-page-header">
+    <div>
+      <a class="back-link" href="{{ url_for('admin_dashboard') }}">← Admin dashboard</a>
+      <h1>Transactions</h1>
+      <p>Search and inspect orders. Transaction changes remain in the existing order workflow.</p>
+    </div>
+    <span class="admin-result-count">{{ total_orders }} result{% if total_orders != 1 %}s{% endif %}</span>
+  </header>
+  <form method="get" class="admin-filter admin-toolbar">
+    <label for="admin-transaction-search">Search ID, listing, buyer, or seller
+      <input id="admin-transaction-search" class="input" type="search" name="q" value="{{ query }}" maxlength="100">
+    </label>
+    <label for="admin-transaction-status">Status
+      <select id="admin-transaction-status" class="input" name="status">
+        <option value="">All statuses</option>
+        {% for state in statuses %}<option value="{{ state }}"{% if status == state %} selected{% endif %}>{{ status_labels[state] }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="primary-button" type="submit">Apply filters</button>
+  </form>
+  {% if orders %}
+    <div class="admin-table-wrap">
+      <table class="admin-data-table admin-transactions-table">
+        <caption class="visually-hidden">Marketplace transactions</caption>
+        <thead>
+          <tr><th scope="col">Transaction</th><th scope="col">Listing</th><th scope="col">Buyer</th><th scope="col">Seller</th><th scope="col">Status</th><th scope="col">Amount</th><th scope="col">Date</th><th scope="col">Action</th></tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+            <tr>
+              <td data-label="Transaction"><strong>Transaction #{{ order["id"] }}</strong>{% if order["order_type"] == "preorder" %}<small class="admin-record-meta">Pre-order</small>{% endif %}</td>
+              <td data-label="Listing"><a href="{{ url_for('order_detail', order_id=order['id']) }}">{{ order["listing_title"] }}</a><small class="admin-record-meta">Qty {{ order["quantity"] }} · {{ order["payment_method"]|upper if order["payment_method"] == "gcash" else order["payment_method"]|title }}</small></td>
+              <td data-label="Buyer">{{ order["buyer_name"] or order["buyer_username"] }}<small class="admin-record-meta">@{{ order["buyer_username"] }}</small></td>
+              <td data-label="Seller">{{ order["seller_name"] or order["seller_username"] }}<small class="admin-record-meta">@{{ order["seller_username"] }}</small></td>
+              <td data-label="Status"><span class="admin-status-badge transaction-{{ order['status'] }}">{{ status_labels[order["status"]] }}</span>{% if order["status"] == "cancelled" and order["status_reason"] %}<small class="admin-record-meta">{{ order["status_reason"] }}</small>{% endif %}</td>
+              <td data-label="Amount"><strong>{{ order["total_price_cents"]|money }}</strong></td>
+              <td data-label="Date">{{ order["created_at"] or "Date unavailable" }}</td>
+              <td data-label="Action"><a class="text-link" href="{{ url_for('order_detail', order_id=order['id']) }}">Inspect →</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if total_pages > 1 %}
+      <nav class="admin-pagination" aria-label="Transaction pages">
+        <span>Page {{ page }} of {{ total_pages }} · {{ total_orders }} transactions</span>
+        <div>
+          {% if page > 1 %}<a class="secondary-action" href="{{ url_for('admin_transactions', q=query, status=status, page=page - 1) }}">Previous</a>{% endif %}
+          {% if page < total_pages %}<a class="secondary-action" href="{{ url_for('admin_transactions', q=query, status=status, page=page + 1) }}">Next</a>{% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state compact-empty"><h2>No transactions found</h2><p>Try a different search or status.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

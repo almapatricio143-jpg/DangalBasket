@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Marketplace · Dangal Basket{% endblock %}
+{% block header_search %}
+  <form class="marketplace-top-search" method="get" action="{{ url_for('index') }}" role="search" data-app-search>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.5 4.5"/></svg>
+    <input type="search" name="q" value="{{ filters.q }}" maxlength="100" placeholder="Search Marketplace" aria-label="Search listings">
+    {% if filters.category %}<input type="hidden" name="category" value="{{ filters.category }}">{% endif %}
+    {% if filters.listing_type %}<input type="hidden" name="type" value="{{ filters.listing_type }}">{% endif %}
+    {% if filters.min_price %}<input type="hidden" name="min_price" value="{{ filters.min_price }}">{% endif %}
+    {% if filters.max_price %}<input type="hidden" name="max_price" value="{{ filters.max_price }}">{% endif %}
+  </form>
+{% endblock %}
+{% block content %}
+<section class="marketplace-content" aria-label="Marketplace listings">
+    <div class="marketplace-heading">
+      <div>
+        <span class="marketplace-eyebrow">THE DANGAL BASKET</span>
+        {% if user %}
+          <h1>Welcome, <span class="marketplace-heading-accent">{{ user["full_name"] }}</span>.</h1>
+          <p>Find something useful, offer a service, or share a product with the community.</p>
+        {% else %}
+          <h1>Welcome to the <span class="marketplace-heading-accent">Marketplace</span>.</h1>
+          <p>Find something useful, offer a service, or share a product with the community.</p>
+        {% endif %}
+      </div>
+      <a class="marketplace-create-button" href="{{ url_for('create_listing') }}"><span aria-hidden="true">＋</span> Create listing</a>
+    </div>
+
+    <form class="marketplace-mobile-search" method="get" action="{{ url_for('index') }}" role="search" data-app-search>
+      <label class="visually-hidden" for="marketplace-mobile-query">Search listings</label>
+      <input id="marketplace-mobile-query" class="input" type="search" name="q" value="{{ filters.q }}" maxlength="100" placeholder="Search listings">
+      {% if filters.category %}<input type="hidden" name="category" value="{{ filters.category }}">{% endif %}
+      {% if filters.listing_type %}<input type="hidden" name="type" value="{{ filters.listing_type }}">{% endif %}
+      {% if filters.min_price %}<input type="hidden" name="min_price" value="{{ filters.min_price }}">{% endif %}
+      {% if filters.max_price %}<input type="hidden" name="max_price" value="{{ filters.max_price }}">{% endif %}
+      <button type="submit" aria-label="Search listings">⌕</button>
+    </form>
+
+    <form class="marketplace-filter-form" method="get" action="{{ url_for('index') }}" data-app-search aria-labelledby="marketplace-filter-heading">
+      <div class="marketplace-filter-header">
+        <div class="marketplace-filter-title">
+          <span class="marketplace-filter-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+          </span>
+          <h2 id="marketplace-filter-heading">Filters</h2>
+        </div>
+        {% if filters.category or filters.min_price or filters.max_price %}
+          <a class="marketplace-filter-clear" data-app-nav href="{{ url_for('index', q=filters.q or none, type=filters.listing_type or none) }}">Clear all</a>
+        {% else %}
+          <span class="marketplace-filter-clear is-disabled" aria-disabled="true">Clear all</span>
+        {% endif %}
+      </div>
+      {% if filters.q %}<input type="hidden" name="q" value="{{ filters.q }}">{% endif %}
+      {% if filters.listing_type %}<input type="hidden" name="type" value="{{ filters.listing_type }}">{% endif %}
+      <div class="field">
+        <label for="marketplace-category">Category</label>
+        <div class="marketplace-select-wrap">
+          <select class="input" id="marketplace-category" name="category">
+            <option value="">All categories</option>
+            {% for category in categories %}
+              <option value="{{ category }}" {% if filters.category == category %}selected{% endif %}>{{ category_labels.get(category, category) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="marketplace-price-grid">
+        <div class="field">
+          <label for="marketplace-min-price">Minimum price</label>
+          <div class="marketplace-price-input-wrap">
+            <span aria-hidden="true">₱</span>
+            <input class="input" id="marketplace-min-price" type="number" name="min_price" min="0" step="0.01" value="{{ filters.min_price }}" inputmode="decimal">
+          </div>
+        </div>
+        <div class="field">
+          <label for="marketplace-max-price">Maximum price</label>
+          <div class="marketplace-price-input-wrap">
+            <span aria-hidden="true">₱</span>
+            <input class="input" id="marketplace-max-price" type="number" name="max_price" min="0" step="0.01" value="{{ filters.max_price }}" inputmode="decimal">
+          </div>
+        </div>
+      </div>
+      <button class="marketplace-filter-submit" type="submit">Apply filters</button>
+    </form>
+
+    <div class="marketplace-section-heading">
+      <div>
+        <span class="marketplace-eyebrow">{% if filters.q or filters.category or filters.listing_type or filters.min_price or filters.max_price %}YOUR SEARCH{% else %}FRESH FROM CAMPUS{% endif %}</span>
+        <h2>{% if filters.q or filters.category or filters.listing_type or filters.min_price or filters.max_price %}Search results{% else %}Today's Picks{% endif %}</h2>
+      </div>
+      <span class="marketplace-listing-count">{{ listings|length }} listing{% if listings|length != 1 %}s{% endif %}</span>
+    </div>
+
+    {% if listings %}
+      <div class="listing-grid marketplace-listing-grid">
+        {% for listing in listings %}
+          <article class="listing-card marketplace-listing-card">
+            <a class="marketplace-card-overlay" href="{{ url_for('listing_detail', listing_id=listing['id']) }}" aria-label="View {{ listing['title'] }}"></a>
+            <div class="listing-image marketplace-listing-image">
+              {% if listing_image_is_available(listing["image_filename"]) %}
+                <img src="{{ url_for('listing_image', filename=listing['image_filename']) }}" alt="">
+              {% else %}
+                <span class="default-listing-image" aria-hidden="true">D</span>
+              {% endif %}
+            </div>
+            <div class="listing-card-body marketplace-listing-card-body">
+              <div class="listing-card-top">
+                <span class="listing-category">{{ category_labels.get(listing["category"], listing["category"]) }}</span>
+                <span class="listing-price">{{ listing["price_cents"]|money }}</span>
+              </div>
+              <h3>{{ listing["title"] }}</h3>
+              <p class="listing-summary">{{ listing["description"] }}</p>
+              {% if listing["listing_type"] == "product" and listing["availability"] == "unavailable" %}
+                <span class="status-pill status-unavailable">Unavailable</span>
+              {% endif %}
+              {% if listing["listing_type"] == "product" %}
+                <div class="marketplace-listing-stats" aria-label="Product rating and sales">
+                  <span class="marketplace-product-rating">
+                    <span aria-hidden="true">★</span>
+                    {% if listing["listing_rating_count"] %}
+                      {{ "%.1f"|format(listing["listing_average_rating"]) }} <small>({{ listing["listing_rating_count"] }})</small>
+                    {% else %}
+                      <small>No ratings</small>
+                    {% endif %}
+                  </span>
+                  <span class="marketplace-product-sales">{{ listing["listing_sold_count"] }} sold</span>
+                </div>
+              {% else %}
+                <div class="marketplace-listing-stats" aria-label="Service listing">
+                  <span>Service</span><span>Contact the seller</span>
+                </div>
+              {% endif %}
+              {% if listing["listing_type"] == "service" %}
+                <a class="listing-card-cta marketplace-listing-cta" href="{{ url_for('listing_detail', listing_id=listing['id']) }}">CONTACT</a>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state marketplace-empty-state">
+        <span aria-hidden="true">⌕</span>
+        <h3>No listings found</h3>
+        <p>Try a different search or choose another category.</p>
+        {% if filters.q or filters.category or filters.listing_type or filters.min_price or filters.max_price %}
+          <a class="marketplace-create-button" href="{{ url_for('index') }}">Clear filters</a>
+        {% elif user %}
+          <a class="marketplace-create-button" href="{{ url_for('create_listing') }}">Create the first listing</a>
+        {% endif %}
+      </div>
+    {% endif %}
+    {% if pagination.pages > 1 %}
+      <nav class="marketplace-pagination" aria-label="Marketplace result pages">
+        <span>Page {{ pagination.page }} of {{ pagination.pages }} · {{ pagination.total }} listings</span>
+        <div>
+          {% if pagination.page > 1 %}
+            <a class="secondary-action" href="{{ url_for('index', q=filters.q, category=filters.category, type=filters.listing_type, min_price=filters.min_price or none, max_price=filters.max_price or none, page=pagination.page - 1) }}">Previous</a>
+          {% endif %}
+          {% if pagination.page < pagination.pages %}
+            <a class="secondary-action" href="{{ url_for('index', q=filters.q, category=filters.category, type=filters.listing_type, min_price=filters.min_price or none, max_price=filters.max_price or none, page=pagination.page + 1) }}">Next</a>
+          {% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  </section>
+{% endblock %}

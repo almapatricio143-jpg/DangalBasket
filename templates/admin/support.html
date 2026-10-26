@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Admin · Support Inbox · DangalBasket{% endblock %}
+{% block content %}
+<section class="management-page messages-page">
+  <a class="back-link" href="{{ url_for('admin_dashboard') }}">← Admin dashboard</a>
+  <span class="eyebrow">MEMBER HELP &amp; BUG REPORTS</span>
+  <div class="section-heading">
+    <h1>Support inbox</h1>
+    <span>{{ conversations|length }} conversation{% if conversations|length != 1 %}s{% endif %}</span>
+  </div>
+  {% if conversations %}
+    <div class="management-list conversation-list">
+      {% for conversation in conversations %}
+        <a class="management-row conversation-row"
+           href="{{ url_for('admin_support_conversation', conversation_id=conversation['id']) }}">
+          <div class="management-main">
+            <strong>{{ conversation["user_name"] }} <small>@{{ conversation["user_username"] }}</small></strong>
+            <span>Private support conversation</span>
+            <p>{{ conversation["latest_message"] or "No messages yet." }}</p>
+          </div>
+          <div class="management-end">
+            {% if conversation["unread_count"] %}<span class="status-pill">{{ conversation["unread_count"] }} unread</span>{% endif %}
+            <time>{{ conversation["latest_at"] or conversation["created_at"] }}</time>
+            <span class="text-link">Open conversation →</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>No support conversations yet</h3>
+      <p>Member bug reports and help requests will appear here.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

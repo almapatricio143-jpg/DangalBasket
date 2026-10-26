@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Transaction #{{ order["id"] }} · DangalBasket{% endblock %}
+{% block content %}
+{% set status_labels = {
+  "pending": "Pending",
+  "confirmed": "Confirmed",
+  "preparing": "Preparing",
+  "ready_for_pickup": "Ready for Pickup",
+  "completed": "Completed",
+  "cancelled": "Cancelled"
+} %}
+{% set progress = namespace(current=-1) %}
+{% for state in order_progress_statuses %}
+  {% if state == progress_status %}{% set progress.current = loop.index0 %}{% endif %}
+{% endfor %}
+<section class="order-page transaction-page">
+  <a class="back-link" href="{{ url_for('transactions') }}">← My transactions</a>
+  <span class="eyebrow">TRANSACTION DETAILS</span>
+  <h1>Transaction <span>#{{ order["id"] }}</span></h1>
+
+  <section class="settings-card order-product-card" aria-labelledby="order-product-title">
+    <div class="order-product-heading">
+      <div class="transaction-listing-image">
+        {% if listing_image_is_available(order["image_filename"]) %}
+          <img src="{{ url_for('listing_image', filename=order['image_filename']) }}" alt="{{ order['listing_title'] }}">
+        {% else %}
+          <span class="default-listing-image" role="img" aria-label="No product image available">D</span>
+        {% endif %}
+      </div>
+      <div class="order-product-copy">
+        <span class="listing-category">{% if order["order_type"] == "preorder" %}PRE-ORDER{% else %}PRODUCT{% endif %}</span>
+        <h2 id="order-product-title">{{ order["listing_title"] }}</h2>
+        <span class="order-seller">Seller <strong>@{{ order["seller_username"] }}</strong></span>
+        {% if order["order_type"] == "preorder" %}
+          <p class="preorder-notice">This is a pre-order. Fulfillment may take longer{% if not order["stock_reserved"] %}; no stock was available when it was placed{% endif %}.</p>
+        {% endif %}
+      </div>
+      <span class="status-pill status-{{ order['status'] }}" aria-label="Transaction status: {{ status_labels[order['status']] }}">{{ status_labels[order["status"]] }}</span>
+    </div>
+    <div class="order-product-totals" aria-label="Order price summary">
+      <div><span>Quantity</span><strong>{{ order["quantity"] }}</strong></div>
+      <div><span>Unit price</span><strong>{{ order["unit_price_cents"]|money }}</strong></div>
+      <div class="order-product-total"><span>Total amount</span><strong>{{ order["total_price_cents"]|money }}</strong></div>
+    </div>
+  </section>
+
+  <section class="order-status-card{% if order['status'] == 'cancelled' %} is-cancelled{% endif %}" role="status" aria-live="polite">
+    <div class="order-status-heading">
+      <div>
+        <span class="eyebrow">{% if order["status"] == "cancelled" %}Order update{% else %}Current status{% endif %}</span>
+        <h2>{{ status_labels[order["status"]] }}{% if order["status"] == "ready_for_pickup" %} — ready for pickup{% endif %}</h2>
+      </div>
+      <span class="order-status-mark" aria-hidden="true">{% if order["status"] == "completed" %}✓{% elif order["status"] == "cancelled" %}×{% else %}{{ progress.current + 1 }}{% endif %}</span>
+    </div>
+    {% if order["status"] == "pending" and is_buyer %}
+      <p>Waiting for seller confirmation. The seller will review your order and respond here. Contact the seller if you need to clarify anything.</p>
+    {% elif order["status"] == "pending" and is_seller %}
+      <p>This order is waiting for your response. Review the request and confirm or reject it when ready.</p>
+    {% elif order["status"] == "pending" %}
+      <p>This order is waiting for the seller to review and confirm it.</p>
+    {% elif order["status"] == "confirmed" and is_buyer %}
+      <p>The seller confirmed your order. They will prepare it and update the status when it is ready.</p>
+    {% elif order["status"] == "confirmed" %}
+      <p>The order is confirmed. Prepare it and update the status when work begins.</p>
+    {% elif order["status"] == "preparing" and is_buyer %}
+      <p>The seller is preparing your order. You will be notified when it is ready for pickup.</p>
+    {% elif order["status"] == "preparing" %}
+      <p>Your order is marked as being prepared. Update the status when it is ready for pickup.</p>
+    {% elif order["status"] == "ready_for_pickup" and is_buyer %}
+      <p>Contact the seller to coordinate pickup. After you receive the item, confirm receipt to complete the transaction.</p>
+    {% elif order["status"] == "ready_for_pickup" %}
+      <p>The buyer has been notified that the order is ready. The buyer will confirm receipt after pickup.</p>
+    {% elif order["status"] == "completed" and completed_by_seller and is_buyer %}
+      <p>The seller marked this transaction complete. You can leave a review below.</p>
+    {% elif order["status"] == "completed" and is_buyer %}
+      <p>You confirmed receipt. Your transaction is complete; you can leave a review below.</p>
+    {% elif order["status"] == "completed" %}
+      <p>The buyer confirmed receipt. This transaction is complete.</p>
+    {% elif cancelled_by_seller %}
+      <p>Order rejected. The seller did not accept this order. {{ order["status_reason"] or "No reason was provided." }}</p>
+    {% else %}
+      <p>This order was cancelled. {{ order["status_reason"] or "No reason was provided." }}</p>
+    {% endif %}
+    {% if latest_status_at %}
+      <p class="order-status-time"><span>Last updated</span><time datetime="{{ latest_status_at|replace(' ', 'T') }}">{{ latest_status_at|datetime }}</time></p>
+    {% endif %}
+  </section>
+
+  {% if order["status"] != "cancelled" %}
+    <section class="order-progress-section" aria-label="Order tracking">
+      <h2>Order progress</h2>
+      <ol class="order-progress" aria-label="Order progress">
+        {% for state in order_progress_statuses %}
+          <li class="{% if progress.current >= loop.index0 %}is-complete{% endif %}{% if progress.current == loop.index0 %} is-current{% endif %}"{% if progress.current == loop.index0 %} aria-current="step"{% endif %}>
+            <span aria-hidden="true">{% if progress.current > loop.index0 %}✓{% else %}{{ loop.index }}{% endif %}</span>
+            <strong>{{ status_labels[state] }}</strong>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% endif %}
+
+  <div class="order-information-grid">
+    <section class="settings-card order-information-card" aria-labelledby="transaction-information-title">
+      <h2 id="transaction-information-title">Transaction information</h2>
+      <dl class="order-summary">
+        <div><dt>Transaction ID</dt><dd>#{{ order["id"] }}</dd></div>
+        <div><dt>Order date</dt><dd><time datetime="{{ order['created_at']|replace(' ', 'T') }}">{{ order["created_at"]|datetime }}</time></dd></div>
+        <div><dt>Transaction type</dt><dd>{{ "Pre-order" if order["order_type"] == "preorder" else "Purchase" }}</dd></div>
+        <div><dt>Payment method</dt><dd>{{ order["payment_method"]|upper if order["payment_method"] == "gcash" else order["payment_method"]|title }}</dd></div>
+        <div><dt>Listing</dt><dd>{% if order["listing_status"] != "removed" %}<a href="{{ url_for('listing_detail', listing_id=order['listing_id']) }}">{{ order["listing_title"] }}</a>{% else %}{{ order["listing_title"] }} (archived){% endif %}</dd></div>
+        <div><dt>Quantity</dt><dd>{{ order["quantity"] }}</dd></div>
+        <div><dt>Unit price</dt><dd>{{ order["unit_price_cents"]|money }}</dd></div>
+        <div class="order-summary-total"><dt>Total amount</dt><dd>{{ order["total_price_cents"]|money }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="settings-card order-contact-card" aria-labelledby="order-contact-title">
+      <h2 id="order-contact-title">Need to talk?</h2>
+      <p>Message the other person about pickup details or this transaction.</p>
+      {% if is_buyer or is_seller %}
+        <a class="secondary-action order-message-link" href="{{ url_for('order_conversation', order_id=order['id']) }}">
+          Contact {{ "seller" if is_buyer else "buyer" }}
+        </a>
+      {% endif %}
+    </section>
+  </div>
+
+  {% if order_actions %}
+    <section class="settings-card order-actions-card" aria-labelledby="order-actions-title">
+      <h2 id="order-actions-title">Available actions</h2>
+      <div class="order-actions">
+        {% for action, label in order_actions %}
+          <form method="post" action="{{ url_for('update_order_status', order_id=order['id']) }}" data-prevent-double-submit
+                {% if action == "cancelled" and is_seller %}onsubmit="return confirm('Reject this order? The buyer will be notified that the seller did not accept it.');"{% elif action == "cancelled" %}onsubmit="return confirm('Cancel this order?');"{% endif %}>
+            {{ status_form.csrf_token }}
+            <input type="hidden" name="status" value="{{ action }}">
+            {% if action == "cancelled" %}
+              <label class="order-reason-label" for="status-reason-{{ order['id'] }}-{{ action }}">Reason (optional)</label>
+              <textarea class="input order-reason-input" id="status-reason-{{ order['id'] }}-{{ action }}" name="status_reason" maxlength="500" rows="2"></textarea>
+            {% endif %}
+            <button class="{% if action == 'cancelled' %}quick-action quick-cancel{% else %}primary-button{% endif %}" type="submit">{{ label }}</button>
+          </form>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if review %}
+    <section class="settings-card review-list">
+      <h2>Your feedback</h2>
+      <article class="review-item">
+        <strong>{{ review["rating"] }} / 5 stars</strong>
+        <p>{{ review["feedback"] }}</p>
+        <small>{{ review["created_at"]|datetime }}</small>
+      </article>
+    </section>
+  {% elif can_review %}
+    <section class="settings-card review-list">
+      <h2>Rate this product</h2>
+      <p>Share your rating and feedback about this product after your completed purchase.</p>
+      <form method="post" action="{{ url_for('submit_review', order_id=order['id']) }}" class="stacked-form" data-prevent-double-submit>
+        {{ review_form.hidden_tag() }}
+        <div class="field">{{ review_form.rating.label }}{{ review_form.rating(class_="input") }}
+          {% for error in review_form.rating.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+        <div class="field">{{ review_form.feedback.label }}{{ review_form.feedback(class_="input", rows="4", maxlength="2000") }}
+          {% for error in review_form.feedback.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+        {{ review_form.submit(class_="primary-button") }}
+      </form>
+    </section>
+  {% endif %}
+</section>
+<script>
+  document.querySelectorAll("form[data-prevent-double-submit]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      if (form.dataset.submitting === "true") {
+        event.preventDefault();
+        return;
+      }
+      form.dataset.submitting = "true";
+      const button = form.querySelector('button[type="submit"], input[type="submit"]');
+      if (button) {
+        button.disabled = true;
+        button.setAttribute("aria-disabled", "true");
+      }
+    });
+  });
+</script>
+{% endblock %}

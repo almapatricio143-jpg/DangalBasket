@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07100b">
+  <script>
+    try {
+      const savedTheme = localStorage.getItem("dangalbasket-theme");
+      document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+    } catch {
+      document.documentElement.dataset.theme = "dark";
+    }
+  </script>
+  <title>{% block title %}DangalBasket{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='support-chat-1') }}">
+  <script src="{{ url_for('static', filename='theme.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='app-navigation.js', v='service-type-filter-1') }}" defer></script>
+  <script src="{{ url_for('static', filename='profile-settings.js', v='profile-settings-2') }}" defer></script>
+  <script src="{{ url_for('static', filename='conversation.js', v='conversation-redesign-1') }}" defer></script>
+  {% if request.endpoint in ("support_chat", "admin_support_conversation") %}
+    <script src="{{ url_for('static', filename='support-chat.js', v='support-chat-1') }}" defer></script>
+  {% endif %}
+  {% if request.endpoint and request.endpoint.startswith("admin_") %}
+    <script src="{{ url_for('static', filename='admin-ui.js', v='admin-panel-1') }}" defer></script>
+  {% endif %}
+</head>
+{% set show_app_sidebar = request.endpoint not in ("register", "login") and not (request.endpoint and request.endpoint.startswith("admin_")) %}
+<body class="{% if show_app_sidebar %}marketplace-body persistent-app-body {% endif %}{% block body_class %}{% endblock %}">
+  <header class="site-header">
+    <a class="brand" href="{{ url_for('index') }}" aria-label="University of Cabuyao home">
+      <img class="brand-mark" src="{{ url_for('static', filename='university-seal.png') }}" alt="">
+      <span class="brand-name" aria-hidden="true">University of Cabuyao</span>
+    </a>
+    {% block header_search %}
+      {% if show_app_sidebar %}
+        <form class="marketplace-top-search" method="get" action="{{ url_for('index') }}" role="search" data-app-search>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.5 4.5"/></svg>
+          <input type="search" name="q" maxlength="100" placeholder="Search Marketplace" aria-label="Search listings">
+        </form>
+      {% endif %}
+    {% endblock %}
+    <nav aria-label="Main navigation">
+      {% if request.endpoint not in ("register", "login") %}
+        <a class="nav-link marketplace-primary-link{% if request.endpoint == 'index' %} active{% endif %}" href="{{ url_for('index') }}"{% if request.endpoint == 'index' %} aria-current="page"{% endif %}>Marketplace</a>
+      {% endif %}
+      {% if session.get("user_id") and current_user_is_admin %}
+        <a class="nav-link admin-nav-link" href="{{ url_for('admin_dashboard') }}"{% if request.endpoint and request.endpoint.startswith('admin_') %} aria-current="page"{% endif %}>Admin</a>
+      {% endif %}
+      {% if session.get("user_id") %}
+        {% if not (request.endpoint and request.endpoint.startswith('admin_')) %}
+          <a class="nav-link" href="{{ url_for('create_listing') }}">Add Listing</a>
+          <a class="nav-link" href="{{ url_for('my_listings') }}">My listings</a>
+          <a class="nav-link" href="{{ url_for('transactions') }}">My transactions</a>
+        {% endif %}
+        <a class="nav-link notification-link" href="{{ url_for('inbox') }}"
+           aria-label="Messages{% if unread_message_count %}, {{ unread_message_count }} unread{% endif %}">
+          <img class="notification-icon" src="{{ url_for('static', filename='messages-icon.png') }}" alt="" aria-hidden="true">
+          {% if unread_message_count %}<span class="notification-count" aria-hidden="true">{{ unread_message_count }}</span>{% endif %}
+        </a>
+        <a class="nav-link notification-link" href="{{ url_for('notifications') }}"
+           aria-label="Notifications{% if unread_notification_count %}, {{ unread_notification_count }} unread{% endif %}">
+          <img class="notification-icon" src="{{ url_for('static', filename='notification-bell.png') }}" alt="" aria-hidden="true">
+          {% if unread_notification_count %}<span class="notification-count" aria-hidden="true">{{ unread_notification_count }}</span>{% endif %}
+        </a>
+        <a class="nav-link profile-link" href="{{ url_for('profile') }}" aria-label="My profile">
+          <img class="profile-nav-icon" src="{{ url_for('static', filename='profile-icon.png') }}" alt="" aria-hidden="true">
+        </a>
+        <form method="post" action="{{ url_for('logout') }}" class="nav-form">
+          {{ logout_form.hidden_tag() }}
+          {{ logout_form.submit(class_="nav-link nav-button") }}
+        </form>
+      {% else %}
+        <a class="nav-link" href="{{ url_for('login') }}">Sign in</a>
+        <a class="nav-cta" href="{{ url_for('register') }}">Create account</a>
+      {% endif %}
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to light mode">
+        <span aria-hidden="true">☼</span><span data-theme-label>Light mode</span>
+      </button>
+    </nav>
+  </header>
+
+  {% if show_app_sidebar %}
+    <div class="persistent-app-layout" data-app-shell>
+      {% include "_persistent_sidebar.html" %}
+      <main class="persistent-app-main" data-app-main tabindex="-1">
+  {% else %}
+    <main>
+  {% endif %}
+    <div id="page-content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <section class="flash-stack" aria-live="polite" aria-label="Notifications">
+            {% for category, message in messages %}
+              <p class="flash flash-{{ category }}{% if request.endpoint == 'profile' and category == 'success' and message.startswith('Profile updated') %} profile-toast{% endif %}">{{ message }}</p>
+            {% endfor %}
+          </section>
+        {% endif %}
+      {% endwith %}
+          {% block content %}{% endblock %}
+        </div>
+      {% if show_app_sidebar %}
+        </main>
+  </div>
+  {% else %}
+    </main>
+    <footer class="site-footer">
+      <span>Made for the PNC community</span>
+      <span>For students, faculty, and staff</span>
+    </footer>
+  {% endif %}
+  {% if session.get("user_id") %}
+    <a class="support-fab"
+       href="{% if current_user_is_admin %}{{ url_for('admin_support_inbox') }}{% else %}{{ url_for('support_chat') }}{% endif %}"
+       aria-label="{% if current_user_is_admin %}Admin support inbox{% else %}Report a bug or contact admins{% endif %}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6.5a7.5 7.5 0 1 1 17-3Z"/><path d="M9.7 9a2.3 2.3 0 1 1 3.8 1.7c-.8.7-1.5 1-1.5 2.3m0 2.5h.01"/></svg>
+      <span>{% if current_user_is_admin %}Admin support{% else %}Report a bug / Contact admins{% endif %}</span>
+      {% if support_unread_count %}<span class="support-fab-count" aria-label="{{ support_unread_count }} unread support message{% if support_unread_count != 1 %}s{% endif %}">{{ support_unread_count }}</span>{% endif %}
+    </a>
+  {% endif %}
+</body>
+</html>

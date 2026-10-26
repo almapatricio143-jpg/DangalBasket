@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}My Transactions · DangalBasket{% endblock %}
+{% block content %}
+{% set status_labels = {
+  "pending": "Pending",
+  "confirmed": "Confirmed",
+  "preparing": "Preparing",
+  "ready_for_pickup": "Ready for Pickup",
+  "completed": "Completed",
+  "cancelled": "Cancelled"
+} %}
+<section class="management-page">
+  <div class="section-heading"><div><span class="eyebrow">ORDER HISTORY</span><h1>My transactions</h1></div><span>{{ orders|length }} found</span></div>
+  <nav class="filter-tabs" aria-label="Transaction filters">
+    {% for key, label in [("all", "All"), ("buyer", "As buyer"), ("seller", "As seller")] %}
+      <a class="{% if view == key %}selected{% endif %}" href="{{ url_for('transactions', view=key, status=status) }}">{{ label }}</a>
+    {% endfor %}
+    {% for state in statuses %}
+      <a class="{% if status == state %}selected{% endif %}" href="{{ url_for('transactions', view=view, status=state) }}">{{ status_labels[state] }}</a>
+    {% endfor %}
+  </nav>
+  {% if orders %}
+    <div class="management-list">
+      {% for order in orders %}
+        <article class="management-row">
+          <div class="management-thumb">
+            {% if listing_image_is_available(order["image_filename"]) %}<img src="{{ url_for('listing_image', filename=order['image_filename']) }}" alt="">
+            {% else %}<span class="default-listing-image" aria-hidden="true">D</span>{% endif %}
+          </div>
+          <div class="management-main">
+            <a href="{{ url_for('order_detail', order_id=order['id']) }}"><strong>{{ order["listing_title"] }}</strong></a>
+            <span>Transaction #{{ order["id"] }} · {{ order["created_at"] }}</span>
+            <span class="{% if order['order_type'] == 'preorder' %}preorder-history-label{% endif %}">{{ "PRE-ORDER" if order["order_type"] == "preorder" else "Purchase" }}</span>
+            <span>Buyer {{ order["buyer_name"] }} · Seller {{ order["seller_name"] }}</span>
+            <span>Payment: {{ order["payment_method"]|upper if order["payment_method"] == "gcash" else order["payment_method"]|title }}</span>
+            {% if order["status"] == "cancelled" and order["status_reason"] %}<span>Reason: {{ order["status_reason"] }}</span>{% endif %}
+          </div>
+          <div class="management-end">
+            <span class="status-pill status-{{ order['status'] }}">{{ status_labels[order["status"]] }}</span>
+            <strong>{{ order["total_price_cents"]|money }}</strong>
+            <a class="text-link" href="{{ url_for('order_detail', order_id=order['id']) }}">View details →</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state compact-empty"><h3>No transactions found</h3><p>Orders you place or receive will appear here.</p><a class="text-link" href="{{ url_for('index') }}">Browse marketplace</a></div>
+  {% endif %}
+</section>
+{% endblock %}

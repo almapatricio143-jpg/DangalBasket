@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}My Listings · DangalBasket{% endblock %}
+{% block content %}
+<section class="management-page">
+  <div class="section-heading">
+    <div><span class="eyebrow">SELLER TOOLS</span><h1>My listings</h1></div>
+    <span>{{ listings|length }} listing{% if listings|length != 1 %}s{% endif %}</span>
+  </div>
+  <section class="incoming-orders-section" aria-labelledby="incoming-orders-heading">
+    <div class="section-heading">
+      <div><span class="eyebrow">SELLER RESPONSE</span><h2 id="incoming-orders-heading">Incoming orders</h2></div>
+      <span>{{ incoming_orders|length }} pending</span>
+    </div>
+    {% if incoming_orders %}
+      <div class="management-list">
+        {% for order in incoming_orders %}
+          <article class="management-row incoming-order-row">
+            <div class="management-thumb">
+              {% if listing_image_is_available(order["image_filename"]) %}
+                <img src="{{ url_for('listing_image', filename=order['image_filename']) }}" alt="">
+              {% else %}<span class="default-listing-image" aria-hidden="true">D</span>{% endif %}
+            </div>
+            <div class="management-main">
+              <a href="{{ url_for('order_detail', order_id=order['id']) }}"><strong>{{ order["listing_title"] }}</strong></a>
+              <span>Transaction #{{ order["id"] }} · {{ order["created_at"] }}</span>
+              <span>Buyer {{ order["buyer_name"] }} (@{{ order["buyer_username"] }}) · Quantity {{ order["quantity"] }}</span>
+              <span>Total {{ order["total_price_cents"]|money }} · Payment: {{ order["payment_method"]|upper if order["payment_method"] == "gcash" else order["payment_method"]|title }}</span>
+              {% if order["order_type"] == "preorder" %}<span class="preorder-history-label">PRE-ORDER</span>{% endif %}
+            </div>
+            <div class="incoming-order-actions">
+              <a class="text-link" href="{{ url_for('order_detail', order_id=order['id']) }}">View details →</a>
+              <a class="secondary-action" href="{{ url_for('order_conversation', order_id=order['id']) }}">Message buyer</a>
+              <form method="post" action="{{ url_for('update_order_status', order_id=order['id']) }}">
+                {{ order_status_form.csrf_token }}
+                <input type="hidden" name="status" value="confirmed">
+                <button class="primary-button" type="submit">Confirm Order</button>
+              </form>
+              <form method="post" action="{{ url_for('update_order_status', order_id=order['id']) }}"
+                    onsubmit="return confirm('Reject this order? The buyer will be notified that the seller did not accept it.');">
+                {{ order_status_form.csrf_token }}
+                <input type="hidden" name="status" value="cancelled">
+                <label class="order-reason-label" for="incoming-reason-{{ order['id'] }}">Reason (optional)</label>
+                <textarea class="input order-reason-input" id="incoming-reason-{{ order['id'] }}" name="status_reason" maxlength="500" rows="2"></textarea>
+                <button class="quick-action quick-cancel" type="submit">Reject Order</button>
+              </form>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state compact-empty"><h3>No pending orders</h3><p>New orders for your products will appear here.</p></div>
+    {% endif %}
+  </section>
+  {% if listings %}
+    <div class="management-list">
+      {% for listing in listings %}
+        <article class="management-row">
+          <div class="management-main">
+            <a href="{{ url_for('listing_detail', listing_id=listing['id']) }}"><strong>{{ listing["title"] }}</strong></a>
+            <span>{{ listing["listing_type"]|title }} · {{ listing["category"] }} · {{ listing["price_cents"]|money }} · Listed {{ listing["created_at"] }}</span>
+            {% if listing["listing_type"] == "service" %}
+              <span>Contact-only · {{ listing["status"]|title }}</span>
+            {% else %}
+              <span>Stock: {{ listing["stock"] }} · {{ listing["status"]|title }} · {{ listing["availability"]|title }}</span>
+            {% endif %}
+          </div>
+          <div class="management-end">
+            {% if listing["status"] == "removed" %}
+              <span class="status-pill status-removed">Archived</span>
+            {% elif listing["listing_type"] == "product" %}
+              <form method="post" action="{{ url_for('update_listing_availability', listing_id=listing['id']) }}" class="availability-form">
+                {{ availability_form.hidden_tag() }}
+                <label for="listing-availability-{{ listing['id'] }}">Availability</label>
+                <select class="input" id="listing-availability-{{ listing['id'] }}" name="availability" required>
+                  <option value="available" {% if listing["availability"] == "available" %}selected{% endif %}>Available</option>
+                  <option value="unavailable" {% if listing["availability"] == "unavailable" %}selected{% endif %}>Unavailable</option>
+                </select>
+                <button class="secondary-action" type="submit">Update</button>
+              </form>
+              <form method="post" action="{{ url_for('restock_listing', listing_id=listing['id']) }}" class="restock-form">
+                {{ restock_form.hidden_tag() }}
+                <label for="restock-quantity-{{ listing['id'] }}">Add units</label>
+                <input class="input" id="restock-quantity-{{ listing['id'] }}" type="number" name="quantity" min="1" max="1000000" step="1" required>
+                <button class="secondary-action" type="submit">Restock</button>
+              </form>
+            {% else %}
+              <span class="stock-note">Contact-only service</span>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state compact-empty">
+      <h3>No listings yet</h3>
+      <p>Products and services you publish will appear here.</p>
+      <a class="text-link" href="{{ url_for('create_listing') }}">Create a listing</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

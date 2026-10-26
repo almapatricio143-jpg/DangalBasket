@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Sign in · DangalBasket{% endblock %}
+{% block content %}
+<section class="auth-layout login-layout">
+  <div class="auth-intro">
+    <span class="eyebrow">WELCOME BACK</span>
+    <h1>Campus Deals,<br><span>Campus feels.</span></h1>
+    <p>Sign in to continue to DangalBasket.</p>
+    <div class="intro-note"><span aria-hidden="true">✦</span> Good to have you back</div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-heading">
+      <span class="eyebrow">YOUR ACCOUNT</span>
+      <h2>Sign in</h2>
+      <p>Use your username or email address.</p>
+    </div>
+    <form method="post" action="{{ url_for('login') }}">
+      {{ form.hidden_tag() }}
+      {% if is_safe_internal_url(request.args.get("next", "")) %}
+        <input type="hidden" name="next" value="{{ request.args.get('next') }}">
+      {% endif %}
+      <div class="field">
+        {{ form.username_or_email.label }}
+        {{ form.username_or_email(class_="input", placeholder="Username or email address", autocomplete="username", required=true) }}
+        {% for error in form.username_or_email.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="field">
+        {{ form.password.label }}
+        {{ form.password(class_="input", placeholder="Your password", autocomplete="current-password", required=true) }}
+        {% for error in form.password.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+      <button class="primary-button" type="submit">Sign in <span aria-hidden="true">→</span></button>
+    </form>
+    <p class="form-switch">New to DangalBasket? <a href="{{ url_for('register') }}">Create an account</a></p>
+  </div>
+</section>
+{% endblock %}

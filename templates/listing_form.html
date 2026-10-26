@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Create listing · DangalBasket{% endblock %}
+{% block content %}
+<section class="auth-layout listing-create-layout">
+  <div class="auth-intro">
+    <span class="eyebrow">SELL WITH DANGALBASKET</span>
+    <h1>Share it with<br>your <span>campus.</span></h1>
+    <p>Offer a product or share a service with the PNC student community.</p>
+    <div class="intro-note"><span aria-hidden="true">✦</span> Products use stock and checkout; services are contact-only.</div>
+  </div>
+  <div class="form-card listing-form-card">
+    <div class="form-heading">
+      <span class="eyebrow">NEW LISTING</span>
+      <h2>Create listing</h2>
+      <p>All fields except the image are required.</p>
+    </div>
+    <form method="post" action="{{ url_for('create_listing') }}" enctype="multipart/form-data">
+      {{ form.hidden_tag() }}
+      {% for field in [form.listing_type, form.title, form.description, form.price, form.category, form.stock] %}
+        <div
+          class="field{% if field.name == 'stock' %} listing-stock-field{% endif %}"
+          {% if field.name == "stock" %}id="listing-stock-field"{% endif %}
+        >
+          {{ field.label }}
+          {% if field.name == "description" %}
+            {{ field(class_="input description-input", rows=4, maxlength=5000, required=true, placeholder="Describe the product or service and any important details.") }}
+          {% elif field.name == "price" %}
+            {{ field(class_="input", type="number", min="0.01", max="999999999.99", step="0.01", required=true, placeholder="0.00") }}
+          {% elif field.name == "category" %}
+            {{ field(class_="input", required=true) }}
+          {% elif field.name == "stock" %}
+            {{ field(class_="input", type="number", min="0", step="1", placeholder="Product quantity", required=true) }}
+            <small class="field-hint">Used for product listings only.</small>
+          {% elif field.name == "listing_type" %}
+            {{ field(class_="input", required=true) }}
+          {% else %}
+            {{ field(class_="input", maxlength=120, required=true, placeholder="A clear, descriptive title") }}
+          {% endif %}
+          {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+      {% endfor %}
+      <div class="field">
+        {{ form.image.label }}
+        {{ form.image(class_="file-input", accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp") }}
+        <small class="field-hint">JPG, PNG, or WEBP, up to {{ image_size_limit }}.</small>
+        {% for error in form.image.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+      <button class="primary-button" type="submit">Publish listing <span aria-hidden="true">→</span></button>
+    </form>
+  </div>
+</section>
+<script src="{{ url_for('static', filename='listing-form.js') }}" defer></script>
+{% endblock %}

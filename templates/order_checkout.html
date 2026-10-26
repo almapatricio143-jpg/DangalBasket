@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Checkout · {{ listing["title"] }} · DangalBasket{% endblock %}
+{% block content %}
+<section class="checkout-page">
+  <a class="back-link" href="{{ url_for('listing_detail', listing_id=listing['id']) }}">← Back to listing</a>
+
+  <form id="checkout-form" method="post" action="{{ url_for('place_order', listing_id=listing['id']) }}">
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="{{ form.quantity.name }}" value="{{ quantity }}">
+
+    <section class="checkout-card checkout-price-card" aria-labelledby="checkout-total-heading">
+      <div class="checkout-listing">
+        <div class="checkout-thumb">
+          {% if listing_image_is_available(listing["image_filename"]) %}
+            <img src="{{ url_for('listing_image', filename=listing['image_filename']) }}" alt="">
+          {% else %}
+            <span class="default-listing-image" aria-hidden="true">D</span>
+          {% endif %}
+        </div>
+        <div>
+          <strong>{{ listing["title"] }}</strong>
+          <span>{{ quantity }} item{% if quantity != 1 %}s{% endif %} · {{ listing["price_cents"]|money }} each</span>
+          {% if preorder %}<span class="preorder-label">PRE-ORDER</span>{% endif %}
+        </div>
+      </div>
+      <dl class="checkout-price-summary">
+        <div><dt>Item price</dt><dd>{{ total_cents|money }}</dd></div>
+        <div class="checkout-grand-total" id="checkout-total-heading">
+          <dt>Total</dt><dd>{{ total_cents|money }}</dd>
+        </div>
+      </dl>
+      {% if preorder %}
+        <p class="preorder-notice">This is a pre-order request. The seller will be notified, and fulfillment may take longer{% if listing["stock"] > 0 %}. Your requested units are reserved from the remaining stock.{% else %}; no stock is currently available.{% endif %}</p>
+      {% endif %}
+    </section>
+
+    <section class="checkout-card checkout-payment-card" aria-labelledby="payment-method-heading">
+      <h1 id="payment-method-heading">Payment method</h1>
+      <p class="checkout-subtitle">Choose how you and the seller will arrange payment.</p>
+      <div class="payment-method-options">
+        {% for value, label in form.payment_method.choices %}
+          <label class="payment-method-option">
+            <input
+              type="radio"
+              name="{{ form.payment_method.name }}"
+              value="{{ value }}"
+              {% if form.payment_method.data == value %}checked{% endif %}
+              required
+            >
+            <span class="payment-method-icon{% if value == "gcash" %} payment-method-icon-gcash{% elif value == "maya" %} payment-method-icon-maya{% endif %}" aria-hidden="true">
+              {% if value == "cash" %}
+                ₱
+              {% elif value == "maya" %}
+                <img class="maya-logo" src="{{ url_for('static', filename='maya-logo.png') }}" alt="">
+              {% else %}
+                <img class="gcash-logo" src="{{ url_for('static', filename='gcash-logo.png') }}" alt="">
+              {% endif %}
+            </span>
+            <span class="payment-method-copy">
+              <strong>{{ label }}</strong>
+              <small>{% if value == "cash" %}Pay directly in cash{% elif value == "maya" %}Arrange Maya payment directly with the seller{% else %}Arrange GCash payment directly with the seller{% endif %}</small>
+            </span>
+            <span class="payment-method-check" aria-hidden="true"></span>
+          </label>
+        {% endfor %}
+      </div>
+      {% for error in form.payment_method.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      <p class="checkout-note">Payment is arranged directly between you and the seller. No payment is processed by DangalBasket.</p>
+    </section>
+  </form>
+
+  <div class="checkout-action-bar">
+    <div class="checkout-action-total">
+      <span>Total ({{ quantity }} item{% if quantity != 1 %}s{% endif %})</span>
+      <strong>{{ total_cents|money }}</strong>
+    </div>
+    <button class="checkout-place-order" type="submit" form="checkout-form">{% if preorder %}Place pre-order{% else %}Place order{% endif %}</button>
+  </div>
+</section>
+{% endblock %}

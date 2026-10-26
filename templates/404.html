@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Page not found · DangalBasket{% endblock %}
+{% block content %}
+<section class="home-hero error-page">
+  <span class="eyebrow">404 · NOT FOUND</span>
+  <h1>This page<br><span>isn’t here.</span></h1>
+  <p>We couldn’t find that profile or page. It may have moved or the username may be incorrect.</p>
+  <a class="primary-button home-button" href="{{ url_for('index') }}">Back to home <span aria-hidden="true">→</span></a>
+</section>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Messages · DangalBasket{% endblock %}
+{% block content %}
+<section class="management-page messages-page">
+  <span class="eyebrow">BUYER &amp; SELLER MESSAGES</span>
+  <div class="section-heading"><h1>Messages</h1><span>{{ conversations|length }} conversation{% if conversations|length != 1 %}s{% endif %}</span></div>
+  {% if conversations %}
+    <div class="management-list conversation-list">
+      {% for conversation in conversations %}
+        <a class="management-row conversation-row" href="{{ url_for('message_conversation', conversation_id=conversation['id']) }}">
+          <div class="management-main">
+            <strong>{{ conversation["other_name"] }} <small>@{{ conversation["other_username"] }}</small></strong>
+            <span>{{ conversation["listing_title"] }}</span>
+            <p>{{ conversation["latest_message"] or "No messages yet. Start the conversation." }}</p>
+          </div>
+          <div class="management-end"><time>{{ conversation["latest_at"] or conversation["created_at"] }}</time><span class="text-link">Open conversation →</span></div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>Your inbox is empty</h3>
+      <p>Contact a seller from a listing to start a conversation.</p>
+      <a class="text-link" href="{{ url_for('index') }}">Browse listings</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

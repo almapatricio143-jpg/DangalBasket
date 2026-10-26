@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}{{ listing["title"] }} · DangalBasket{% endblock %}
+{% block content %}
+<section class="listing-detail-page{% if listing['listing_type'] == 'service' %} service-detail-page{% elif not is_seller %} has-product-action-bar{% endif %}">
+  <a class="back-link" href="{{ url_for('index') }}">← Back to marketplace</a>
+  <div class="listing-detail-grid">
+    <div class="detail-image">
+      {% if listing_image_is_available(listing["image_filename"]) %}
+        <img src="{{ url_for('listing_image', filename=listing['image_filename']) }}" alt="{{ listing['title'] }}">
+      {% else %}
+        <span class="default-listing-image detail-placeholder" aria-hidden="true">D</span>
+      {% endif %}
+    </div>
+    <article class="detail-content{% if listing['listing_type'] == 'service' %} service-detail-content{% endif %}">
+      <div class="detail-meta"><span class="listing-category">{{ listing["category"] }}</span>
+        <span class="status-pill status-{{ listing['status'] }}">{{ listing["status"]|title }}</span>
+      </div>
+      <h1>{{ listing["title"] }}</h1>
+      {% if listing["price_cents"] is number and listing["price_cents"] > 0 %}
+        <p class="detail-price">{{ listing["price_cents"]|money }}</p>
+      {% else %}
+        <p class="detail-price service-price-unavailable">Price unavailable</p>
+      {% endif %}
+      <div class="detail-description">{{ listing["description"] }}</div>
+      {% if listing["listing_type"] == "service" %}
+        {% if listing["status"] == "active" and seller_available %}
+          <p class="availability-line service-availability">Active listing · message the seller to confirm current availability.</p>
+        {% elif not seller_available %}
+          <p class="service-unavailable-note" role="status">The seller is currently unavailable. You can still view their profile.</p>
+        {% else %}
+          <p class="service-unavailable-note" role="status">This service listing is not currently active.</p>
+        {% endif %}
+      {% elif listing["listing_type"] == "product" and listing["availability"] == "unavailable" %}
+        <p class="availability-line" role="status">Unavailable</p>
+      {% elif available and listing["stock"] > 0 %}
+        <p class="availability-line">{{ listing["stock"] }} unit{% if listing["stock"] != 1 %}s{% endif %} available</p>
+        {% if preorder %}<p class="order-note">Limited stock — this will be placed as a pre-order.</p>{% endif %}
+      {% elif available %}
+        <p class="availability-line">Out of stock · pre-orders open</p>
+        <p class="order-note">Fulfillment may take longer.</p>
+      {% else %}
+        <p class="availability-line">Unavailable</p>
+      {% endif %}
+
+      {% if listing["listing_type"] == "service" %}
+        <a class="detail-seller service-seller-card" href="{{ url_for('public_profile', username=listing['seller_username']) }}">
+          <span class="avatar avatar-medium">
+            {% if avatar_is_available(listing["seller_avatar"]) %}
+              <img src="{{ url_for('profile_photo', filename=listing['seller_avatar']) }}" alt="{{ listing['seller_name'] }}'s profile photo">
+            {% else %}
+              <span aria-hidden="true">{{ listing["seller_name"][:1]|upper }}</span>
+            {% endif %}
+          </span>
+          <span class="service-seller-copy">
+            <strong>{{ listing["seller_name"] }}</strong>
+            <small>@{{ listing["seller_username"] }} · View profile</small>
+          </span>
+          <span class="service-seller-rating">
+            {% if listing["rating_count"] %}
+              <strong aria-label="{{ '%.1f'|format(listing['average_rating']) }} out of 5 stars"><span aria-hidden="true">★</span> {{ "%.1f"|format(listing["average_rating"]) }} / 5</strong>
+              <small>{{ listing["rating_count"] }} rating{% if listing["rating_count"] != 1 %}s{% endif %}</small>
+            {% else %}
+              <small>No ratings yet</small>
+            {% endif %}
+          </span>
+          <span class="seller-arrow" aria-hidden="true">↗</span>
+        </a>
+      {% else %}
+        <a class="detail-seller" href="{{ url_for('public_profile', username=listing['seller_username']) }}">
+          <span class="avatar avatar-medium">
+            {% if avatar_is_available(listing["seller_avatar"]) %}
+              <img src="{{ url_for('profile_photo', filename=listing['seller_avatar']) }}" alt="">
+            {% else %}
+              {{ listing["seller_name"][:1]|upper }}
+            {% endif %}
+          </span>
+          <span><strong>{{ listing["seller_name"] }}</strong><small>@{{ listing["seller_username"] }} · View seller profile</small></span>
+          <span class="seller-arrow" aria-hidden="true">↗</span>
+        </a>
+        <p class="rating-summary">
+          Seller rating:
+          {% if listing["rating_count"] %}
+            {{ "%.1f"|format(listing["average_rating"]) }} / 5 ({{ listing["rating_count"] }} rating{% if listing["rating_count"] != 1 %}s{% endif %})
+          {% else %}No ratings yet{% endif %}
+        </p>
+      {% endif %}
+      <p class="created-date">Listed {{ listing["created_at"] }}</p>
+      {% if listing["listing_type"] == "product" %}
+        <p class="rating-summary">
+          Item rating:
+          {% if listing["listing_rating_count"] %}
+            <span aria-label="{{ '%.1f'|format(listing['listing_average_rating']) }} out of 5 stars">★ {{ "%.1f"|format(listing["listing_average_rating"]) }} / 5</span>
+            ({{ listing["listing_rating_count"] }} rating{% if listing["listing_rating_count"] != 1 %}s{% endif %})
+          {% else %}No ratings yet{% endif %}
+          · {{ listing["listing_sold_count"] }} sold
+        </p>
+      {% endif %}
+
+      {% if listing["listing_type"] == "service" %}
+        {% if not is_seller and listing["status"] == "active" and seller_available %}
+          {% if session.get("user_id") %}
+            <form method="post" action="{{ url_for('contact_service_provider', listing_id=listing['id']) }}" class="service-contact-form">
+              {{ contact_provider_form.hidden_tag() }}
+              <button class="primary-button service-message-button" type="submit">Message seller <span aria-hidden="true">→</span></button>
+            </form>
+          {% else %}
+            <a class="primary-button service-message-button" href="{{ url_for('login', next=url_for('listing_detail', listing_id=listing['id'])) }}">Message seller <span aria-hidden="true">→</span></a>
+          {% endif %}
+          <p class="service-contact-note">Messaging does not book or reserve this service. Confirm details directly with the seller.</p>
+        {% elif is_seller %}
+          <div class="notice-box">This is your service listing. You can update its details from My listings.</div>
+        {% endif %}
+      {% elif not is_seller %}
+        {% if session.get("user_id") %}
+          <form method="post" action="{{ url_for('contact_service_provider', listing_id=listing['id']) }}" class="contact-provider-form">
+            {{ contact_provider_form.hidden_tag() }}
+            <button class="secondary-action" type="submit">Contact seller</button>
+          </form>
+        {% else %}
+          <a class="secondary-action contact-provider-form" href="{{ url_for('login', next=url_for('listing_detail', listing_id=listing['id'])) }}">Sign in to contact seller</a>
+        {% endif %}
+      {% endif %}
+
+      {% if listing["listing_type"] == "product" and is_seller %}
+        <div class="notice-box">This is your listing. You can’t place an order for your own item.</div>
+      {% elif listing["listing_type"] == "product" and available and session.get("user_id") %}
+        <form id="listing-order-form" method="get" action="{{ url_for('order_checkout', listing_id=listing['id']) }}" class="order-form">
+          <div class="field quantity-field">
+            {{ order_form.quantity.label }}
+            {% if listing["stock"] > 0 %}
+              {{ order_form.quantity(class_="input", type="number", min="1", max=listing["stock"], required=true) }}
+            {% else %}
+              {{ order_form.quantity(class_="input", type="number", min="1", required=true) }}
+            {% endif %}
+            {% for error in order_form.quantity.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+        </form>
+        <small class="order-note">{% if preorder %}Choose a quantity to pre-order. Fulfillment may take longer.{% else %}Choose your quantity, then continue to checkout.{% endif %}</small>
+      {% elif listing["listing_type"] == "product" and available %}
+        <a class="primary-button" href="{{ url_for('login') }}?next={{ encode_next_url(url_for('order_checkout', listing_id=listing['id'], quantity=1)) }}">Sign in to {% if preorder %}pre-order{% else %}buy{% endif %} <span aria-hidden="true">→</span></a>
+      {% elif listing["listing_type"] == "product" %}
+        <div class="notice-box">This listing is no longer available to order.</div>
+      {% endif %}
+
+      {% if is_seller %}
+        {% if listing["listing_type"] == "product" and listing["status"] != "removed" %}
+          <form method="post" action="{{ url_for('update_listing_availability', listing_id=listing['id']) }}" class="availability-form">
+            {{ availability_form.hidden_tag() }}
+            {{ availability_form.availability.label }}
+            {{ availability_form.availability(class_="input") }}
+            {{ availability_form.submit(class_="secondary-button") }}
+          </form>
+        {% endif %}
+        <form method="post" action="{{ url_for('archive_own_listing', listing_id=listing['id']) }}" class="archive-form" onsubmit="return confirm('Archive this listing? Existing transaction history will be preserved.');">
+          {{ archive_form.hidden_tag() }}
+          {{ archive_form.submit(class_="secondary-button") }}
+        </form>
+      {% elif session.get("user_id") %}
+        <details class="report-box">
+          <summary>Report listing</summary>
+          <form method="post" action="{{ url_for('report_listing', listing_id=listing['id']) }}" class="stacked-form">
+            {{ report_form.hidden_tag() }}
+            <div class="field">{{ report_form.reason.label }}{{ report_form.reason(class_="input") }}
+              {% for error in report_form.reason.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+            </div>
+            <div class="field">{{ report_form.explanation.label }}{{ report_form.explanation(class_="input", rows="3", maxlength="2000") }}
+              {% for error in report_form.explanation.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+            </div>
+            {{ report_form.submit(class_="secondary-button") }}
+          </form>
+        </details>
+      {% else %}
+        <p class="order-note"><a href="{{ url_for('login', next=url_for('listing_detail', listing_id=listing['id'])) }}">Sign in</a> to report this listing.</p>
+      {% endif %}
+    </article>
+  </div>
+  {% if not is_seller and listing["listing_type"] == "product" %}
+    <nav class="product-action-bar" aria-label="Listing actions">
+      <a class="product-action-link" href="{{ url_for('public_profile', username=listing['seller_username']) }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5M5.5 9.5v10h13v-10M9 19.5v-6h6v6"/></svg>
+        <span>Shop</span>
+      </a>
+      {% if session.get("user_id") %}
+        <form method="post" action="{{ url_for('contact_service_provider', listing_id=listing['id']) }}" class="product-chat-form">
+          {{ contact_provider_form.hidden_tag() }}
+          <button class="product-action-link" type="submit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6.5a7.5 7.5 0 1 1 17-3Z"/></svg>
+            <span>Chat</span>
+          </button>
+        </form>
+      {% else %}
+        <a class="product-action-link" href="{{ url_for('login', next=url_for('listing_detail', listing_id=listing['id'])) }}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6.5a7.5 7.5 0 1 1 17-3Z"/></svg>
+          <span>Chat</span>
+        </a>
+      {% endif %}
+      {% if available and session.get("user_id") %}
+        <button class="product-buy-button" type="submit" form="listing-order-form">{% if preorder %}PRE-ORDER{% else %}BUY NOW{% endif %}</button>
+      {% elif available %}
+        <a class="product-buy-button" href="{{ url_for('login') }}?next={{ encode_next_url(url_for('order_checkout', listing_id=listing['id'], quantity=1)) }}">{% if preorder %}PRE-ORDER{% else %}BUY NOW{% endif %}</a>
+      {% else %}
+        <button class="product-buy-button" type="button" disabled>UNAVAILABLE</button>
+      {% endif %}
+    </nav>
+  {% endif %}
+  {% if reviews %}
+    <section class="settings-card review-list listing-reviews">
+      <h2>Recent item reviews</h2>
+      {% for review in reviews %}
+        <article class="review-item">
+          <div class="review-heading"><strong>{{ review["rating"] }} / 5 stars</strong><span>{{ review["created_at"] }}</span></div>
+          <p>{{ review["feedback"] }}</p>
+          <small>From {{ review["buyer_name"] }}</small>
+        </article>
+      {% endfor %}
+    </section>
+  {% endif %}
+</section>
+{% endblock %}

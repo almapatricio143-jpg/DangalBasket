@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Admin · Users · DangalBasket{% endblock %}
+{% block content %}
+<section class="management-page admin-page admin-users-page">
+  <header class="admin-page-header">
+    <div>
+      <a class="back-link" href="{{ url_for('admin_dashboard') }}">← Admin dashboard</a>
+      <h1>Users</h1>
+      <p>Manage account status and administrator roles separately.</p>
+    </div>
+    <span class="admin-result-count">{{ total_users }} result{% if total_users != 1 %}s{% endif %}</span>
+  </header>
+  <form method="get" class="admin-filter admin-users-filter admin-toolbar">
+    <label for="admin-user-search">Search username, name, or email
+      <input id="admin-user-search" class="input" type="search" name="q" value="{{ query }}" maxlength="100">
+    </label>
+    <label for="admin-user-role">Role
+      <select id="admin-user-role" class="input" name="role">
+        <option value="all"{% if role_filter == "all" %} selected{% endif %}>All roles</option>
+        <option value="student"{% if role_filter == "student" %} selected{% endif %}>Student</option>
+        <option value="admin"{% if role_filter == "admin" %} selected{% endif %}>Admin</option>
+      </select>
+    </label>
+    <label for="admin-user-approval">Approval status
+      <select id="admin-user-approval" class="input" name="status">
+        <option value="all"{% if approval_filter == "all" %} selected{% endif %}>All statuses</option>
+        <option value="pending"{% if approval_filter == "pending" %} selected{% endif %}>Pending</option>
+        <option value="approved"{% if approval_filter == "approved" %} selected{% endif %}>Approved</option>
+        <option value="rejected"{% if approval_filter == "rejected" %} selected{% endif %}>Rejected</option>
+      </select>
+    </label>
+    <label for="admin-user-ban-status">Account
+      <select id="admin-user-ban-status" class="input" name="ban">
+        <option value="all"{% if ban_filter == "all" %} selected{% endif %}>All accounts</option>
+        <option value="active"{% if ban_filter == "active" %} selected{% endif %}>Not banned</option>
+        <option value="banned"{% if ban_filter == "banned" %} selected{% endif %}>Banned</option>
+      </select>
+    </label>
+    <button class="primary-button" type="submit">Apply filters</button>
+  </form>
+
+  {% if users %}
+    <div class="admin-users-table-wrap">
+      <table class="admin-users-table">
+        <caption class="visually-hidden">User accounts and moderation actions</caption>
+        <thead>
+          <tr>
+            <th scope="col">User</th>
+            <th scope="col">Role</th>
+            <th scope="col">Approval</th>
+            <th scope="col">Account</th>
+            <th scope="col">Joined</th>
+            <th scope="col">Listing reports</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+            <tr>
+              <td data-label="User">
+                <div class="admin-user-identity">
+                  <a class="admin-user-name" href="{{ url_for('public_profile', username=user['username']) }}">
+                    {{ user["full_name"] or user["username"] or "Unnamed user" }}
+                  </a>
+                  <span>@{{ user["username"] or "unknown" }}</span>
+                  <span>{{ user["email"] or "Not provided" }}</span>
+                  <a class="admin-user-profile-link" href="{{ url_for('public_profile', username=user['username']) }}">Public profile →</a>
+                </div>
+              </td>
+              <td data-label="Role"><span class="admin-status-badge role-{{ user['role'] }}">{{ user["role"]|title if user["role"] else "Unknown" }}</span></td>
+              <td data-label="Approval"><span class="admin-status-badge approval-{{ user['approval_status'] }}">{{ user["approval_status"]|title if user["approval_status"] else "Unknown" }}</span></td>
+              <td data-label="Account">
+                {% if user["banned_at"] %}
+                  <span class="admin-status-badge account-banned">Banned</span>
+                  <small class="admin-user-status-detail">{{ user["banned_at"] }}</small>
+                  {% if user["ban_reason"] %}<small class="admin-user-status-detail">Reason: {{ user["ban_reason"] }}</small>{% endif %}
+                {% else %}
+                  <span class="admin-status-badge account-active">Active</span>
+                {% endif %}
+              </td>
+              <td data-label="Joined">{{ user["created_at"] or "Unknown" }}</td>
+              <td data-label="Listing reports">
+                <strong>{{ user["report_count"] }}</strong> total
+                <small class="admin-user-status-detail">{{ user["pending_report_count"] }} pending</small>
+              </td>
+              <td data-label="Actions">
+                <div class="admin-user-actions">
+                  {% if user["banned_at"] %}
+                    <form method="post" action="{{ url_for('reinstate_user', user_id=user['id']) }}">
+                      {{ user_action_form.hidden_tag() }}
+                      <input type="hidden" name="q" value="{{ query }}">
+                      <input type="hidden" name="role" value="{{ role_filter }}">
+                      <input type="hidden" name="status" value="{{ approval_filter }}">
+                      <input type="hidden" name="ban" value="{{ ban_filter }}">
+                      <input type="hidden" name="page" value="{{ page }}">
+                      <button class="secondary-action promote-user-button" type="submit">Unban account</button>
+                    </form>
+                  {% elif user["role"] != "admin" %}
+                    <button class="secondary-action promote-user-button" type="button" data-ban-dialog-open="ban-user-dialog-{{ user['id'] }}">Ban account</button>
+                  {% endif %}
+                  {% if user["role"] != "admin" and user["approval_status"] == "approved" and not user["banned_at"] %}
+                    <form method="post" action="{{ url_for('promote_user_to_admin', user_id=user['id']) }}" onsubmit="return confirm('Promote this user to administrator?');">
+                      {{ user_action_form.hidden_tag() }}
+                      <input type="hidden" name="q" value="{{ query }}">
+                      <input type="hidden" name="role" value="{{ role_filter }}">
+                      <input type="hidden" name="status" value="{{ approval_filter }}">
+                      <input type="hidden" name="ban" value="{{ ban_filter }}">
+                      <input type="hidden" name="page" value="{{ page }}">
+                      <button class="secondary-action promote-user-button" type="submit">Promote to admin</button>
+                    </form>
+                  {% endif %}
+                </div>
+                {% if user["role"] != "admin" and not user["banned_at"] %}
+                  <dialog class="admin-ban-dialog" id="ban-user-dialog-{{ user['id'] }}" aria-labelledby="ban-user-title-{{ user['id'] }}">
+                    <form method="post" action="{{ url_for('ban_user', user_id=user['id']) }}">
+                      {{ ban_user_form.hidden_tag() }}
+                      <input type="hidden" name="q" value="{{ query }}">
+                      <input type="hidden" name="role" value="{{ role_filter }}">
+                      <input type="hidden" name="status" value="{{ approval_filter }}">
+                      <input type="hidden" name="ban" value="{{ ban_filter }}">
+                      <input type="hidden" name="page" value="{{ page }}">
+                      <h2 id="ban-user-title-{{ user['id'] }}">Ban @{{ user["username"] }}</h2>
+                      <p>This prevents the account from signing in. Enter the reason for this moderation decision.</p>
+                      <label for="ban-reason-{{ user['id'] }}">Reason for ban <span aria-hidden="true">*</span></label>
+                      <textarea class="input" id="ban-reason-{{ user['id'] }}" name="reason" rows="4" maxlength="500" required placeholder="Explain the moderation decision"></textarea>
+                      <div class="admin-ban-dialog-actions">
+                        <button class="secondary-action" type="button" data-ban-dialog-close>Cancel</button>
+                        <button class="primary-button" type="submit">Confirm ban</button>
+                      </div>
+                    </form>
+                  </dialog>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if total_pages > 1 %}
+      <nav class="admin-users-pagination" aria-label="User result pages">
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        <div>
+          {% if page > 1 %}
+            <a class="secondary-action" href="{{ url_for('admin_users', q=query, role=role_filter, status=approval_filter, ban=ban_filter, page=page - 1) }}">Previous</a>
+          {% endif %}
+          {% if page < total_pages %}
+            <a class="secondary-action" href="{{ url_for('admin_users', q=query, role=role_filter, status=approval_filter, ban=ban_filter, page=page + 1) }}">Next</a>
+          {% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state compact-empty"><h3>No users found</h3><p>Try a different search or adjust the selected filters.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard · DangalBasket{% endblock %}
+{% block content %}
+<section class="management-page admin-page admin-dashboard-page">
+  <header class="admin-page-header">
+    <div>
+      <span class="eyebrow">MARKETPLACE OVERSIGHT</span>
+      <h1>Admin dashboard</h1>
+      <p>Review platform activity and manage marketplace records.</p>
+    </div>
+  </header>
+  <section class="admin-stats" aria-label="Marketplace overview">
+    <div><span>Registered users</span><strong>{{ stats["users"] }}</strong></div>
+    <div><span>Pending registrations</span><strong>{{ stats["pending_registrations"] }}</strong></div>
+    <div><span>Active listings</span><strong>{{ stats["active_listings"] }}</strong></div>
+    <div><span>Pending reports</span><strong>{{ stats["pending_reports"] }}</strong></div>
+    <div><span>Transactions</span><strong>{{ stats["transactions"] }}</strong></div>
+    <div><span>Pending transactions</span><strong>{{ stats["pending_transactions"] }}</strong></div>
+    <div><span>Completed transactions</span><strong>{{ stats["completed_transactions"] }}</strong></div>
+  </section>
+  <nav class="admin-nav" aria-label="Admin management">
+    <a href="{{ url_for('admin_users') }}"><strong>Manage users</strong><span>Search accounts, review reports, and manage account status.</span></a>
+    <a href="{{ url_for('admin_registrations') }}"><strong>Student registrations</strong><span>Review supporting registration documents and requests.</span></a>
+    <a href="{{ url_for('admin_reports') }}"><strong>Listing reports</strong><span>Inspect reports and record moderation decisions.</span></a>
+    <a href="{{ url_for('admin_transactions') }}"><strong>Transactions</strong><span>Search orders and inspect transaction details.</span></a>
+    <a href="{{ url_for('admin_listings') }}"><strong>Listings</strong><span>Find listings and archive content when appropriate.</span></a>
+    <a href="{{ url_for('admin_support_inbox') }}"><strong>Admin support inbox{% if support_unread_count %} · {{ support_unread_count }} unread{% endif %}</strong><span>Reply to account questions and support requests.</span></a>
+  </nav>
+</section>
+{% endblock %}

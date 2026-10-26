@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Notifications · DangalBasket{% endblock %}
+{% block content %}
+<section class="management-page messages-page notification-center">
+  <span class="eyebrow">YOUR ACTIVITY</span>
+  <div class="notification-heading">
+    <div>
+      <h1>Notifications</h1>
+      <p>Order progress and messages, all in one place.</p>
+    </div>
+    <div class="notification-summary" aria-label="{{ unread_count }} unread notifications">
+      <strong>{{ total_count }}</strong>
+      <span>updates{% if unread_count %} · {{ unread_count }} unread{% endif %}</span>
+    </div>
+  </div>
+
+  <div class="notification-toolbar">
+    <nav class="notification-filters" aria-label="Filter notifications">
+      {% for key, label in [("all", "All"), ("orders", "Orders"), ("messages", "Messages"), ("account", "Account")] %}
+        <a class="notification-filter{% if category == key %} is-active{% endif %}"
+           href="{{ url_for('notifications', category=key) }}"
+           {% if category == key %}aria-current="page"{% endif %}>
+          {{ label }} <span>{{ category_counts[key] }}</span>
+        </a>
+      {% endfor %}
+    </nav>
+    {% if unread_count %}
+      <form method="post" action="{{ url_for('mark_all_notifications_read') }}" class="notification-mark-all">
+        {% if mark_all_form.csrf_token is defined %}{{ mark_all_form.csrf_token(id="notification-mark-all-csrf") }}{% endif %}
+        <button type="submit" class="secondary-action">Mark all as read</button>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if notifications %}
+    <div class="notification-list">
+      {% for notification in notifications %}
+        <article class="notification-card{% if not notification['read_at'] %} is-unread{% endif %}">
+          <span class="notification-type-icon notification-icon-{{ notification['icon'] }}" aria-hidden="true">
+            {% if notification["icon"] == "message" %}✉
+            {% elif notification["icon"] == "receipt" %}▤
+            {% elif notification["icon"] == "account" %}♙
+            {% else %}↗{% endif %}
+          </span>
+          <div class="notification-content">
+            <div class="notification-title-line">
+              <strong>{{ notification["display_body"] }}</strong>
+              {% if notification["decision_status"] %}
+                <span class="admin-status-badge approval-{{ notification['decision_status'] }}">{{ notification["decision_status"]|title }}</span>
+              {% endif %}
+              {% if not notification["read_at"] %}<span class="notification-unread-dot" role="img" aria-label="Unread"></span>{% endif %}
+            </div>
+            <div class="notification-meta">
+              {% if notification["actor_name"] %}<span>From {{ notification["actor_name"] }}</span>{% endif %}
+              {% if notification["created_iso"] %}
+                <time datetime="{{ notification['created_iso'] }}">{{ notification["created_label"] }}</time>
+              {% else %}
+                <span>{{ notification["created_label"] }}</span>
+              {% endif %}
+            </div>
+          </div>
+          {% if notification["destination_url"] %}
+            <form method="post"
+                  action="{{ url_for('open_notification', notification_id=notification['id']) }}"
+                  class="notification-view-form">
+              {% if mark_all_form.csrf_token is defined %}{{ mark_all_form.csrf_token(id="notification-open-csrf-" ~ notification['id']) }}{% endif %}
+              <button type="submit" class="text-link">{{ notification["destination_label"] }} →</button>
+            </form>
+          {% else %}
+            <span class="notification-unavailable">Unavailable</span>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+    {% if total_pages > 1 %}
+      <nav class="notification-pagination" aria-label="Notification pages">
+        {% if page > 1 %}
+          <a class="secondary-action" href="{{ url_for('notifications', category=category, page=page - 1) }}">← Newer</a>
+        {% else %}
+          <span></span>
+        {% endif %}
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+          <a class="secondary-action" href="{{ url_for('notifications', category=category, page=page + 1) }}">Older →</a>
+        {% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state notification-empty">
+      <span aria-hidden="true">✦</span>
+      <h3>{% if category == "account" %}No account notifications{% else %}You’re all caught up{% endif %}</h3>
+      <p>{% if category == "account" %}Account-related updates will appear here when available.{% else %}New messages and order updates will appear here.{% endif %}</p>
+      {% if category != "all" %}
+        <a class="text-link" href="{{ url_for('notifications') }}">View all notifications</a>
+      {% else %}
+        <a class="text-link" href="{{ url_for('index') }}">Browse marketplace</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

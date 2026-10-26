@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Conversation · {{ conversation["listing_title"] }} · DangalBasket{% endblock %}
+{% block content %}
+<section class="messages-page conversation-page">
+  <a class="back-link" href="{{ url_for('inbox') }}">← Back to messages</a>
+  {% set is_customer = session.get("user_id") == conversation["customer_id"] %}
+  {% set other_name = conversation["provider_name"] if is_customer else conversation["customer_name"] %}
+  {% set other_username = conversation["provider_username"] if is_customer else conversation["customer_username"] %}
+  <header class="conversation-heading">
+    <div class="conversation-listing-image">
+      {% if conversation["listing_image_filename"] and listing_image_is_available(conversation["listing_image_filename"]) %}
+        <img src="{{ url_for('listing_image', filename=conversation['listing_image_filename']) }}" alt="{{ conversation['listing_title'] }} listing">
+      {% else %}
+        <span class="default-listing-image conversation-listing-fallback" role="img" aria-label="No listing image available">D</span>
+      {% endif %}
+    </div>
+    <div class="conversation-listing-info">
+      <span class="eyebrow">LISTING CONVERSATION</span>
+      <h1>{{ conversation["listing_title"] }}</h1>
+      <p class="conversation-participant">
+        <strong>{{ other_name }}</strong>
+        <span class="conversation-participant-role">{{ "Seller" if is_customer else "Buyer" }} · @{{ other_username }}</span>
+      </p>
+      {% if not conversation["listing_available"] %}
+        <p class="conversation-unavailable-note">This listing is unavailable, but you can continue this conversation.</p>
+      {% endif %}
+    </div>
+    <div class="conversation-listing-action">
+      {% if conversation["listing_available"] %}
+        {% if conversation["listing_price_cents"] %}
+          <span class="conversation-listing-price">{{ conversation["listing_price_cents"] | money }}</span>
+        {% endif %}
+        <a class="text-link" href="{{ url_for('listing_detail', listing_id=conversation['listing_id']) }}">View listing <span aria-hidden="true">→</span></a>
+      {% else %}
+        <span class="conversation-listing-unavailable" role="status">
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <circle cx="8" cy="8" r="6.25"></circle>
+            <path d="M8 4.5v4M8 11.1h.01"></path>
+          </svg>
+          <span>Listing unavailable</span>
+        </span>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="message-thread" aria-label="Conversation messages">
+    {% if messages %}
+      {% for message in messages %}
+        {% if message["show_day_separator"] %}
+          <div class="message-day-separator"><span>{{ message["day_label"] }}</span></div>
+        {% endif %}
+        {% set own_message = message["sender_id"] == session.get("user_id") %}
+        <article class="message-bubble{% if own_message %} message-own{% endif %}{% if message['grouped_after_previous'] %} message-grouped{% endif %}">
+          {% if not message["grouped_after_previous"] %}
+            <div class="message-meta">
+              {% if not own_message %}<strong>{{ message["sender_name"] }}</strong><span>@{{ message["sender_username"] }}</span>{% endif %}
+              <time>{{ message["time_label"] }}</time>
+            </div>
+          {% else %}
+            <div class="message-meta message-meta-grouped"><time>{{ message["time_label"] }}</time></div>
+          {% endif %}
+          <p>{{ message["body"] }}</p>
+        </article>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state compact-empty">
+        <h3>Start the conversation</h3>
+        <p>Send a message about this listing. The other participant can reply here.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <form method="post" action="{{ url_for('message_conversation', conversation_id=conversation['id']) }}" class="settings-card message-compose" data-message-composer>
+    {{ form.hidden_tag() }}
+    <div class="field">
+      {{ form.body.label }}
+      {{ form.body(class_="input", rows="3", maxlength="2000", placeholder="Write a message...", required=true, aria_describedby="message-compose-hint") }}
+      <span class="message-compose-hint" id="message-compose-hint">Enter to send · Shift+Enter for a new line · Up to 2,000 characters</span>
+      {% for error in form.body.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="message-compose-actions">
+      <span class="message-send-status" data-message-send-status role="status" aria-live="polite"></span>
+      {{ form.submit(class_="primary-button message-send") }}
+    </div>
+  </form>
+</section>
+{% endblock %}

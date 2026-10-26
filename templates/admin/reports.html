@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Admin · Reports · DangalBasket{% endblock %}
+{% block content %}
+<section class="management-page admin-page admin-reports-page">
+  <header class="admin-page-header">
+    <div>
+      <a class="back-link" href="{{ url_for('admin_dashboard') }}">← Admin dashboard</a>
+      <h1>Listing reports</h1>
+      <p>Review reported content and record a single, auditable moderation outcome.</p>
+    </div>
+    <span class="admin-result-count">{{ total_reports }} result{% if total_reports != 1 %}s{% endif %}</span>
+  </header>
+  <nav class="filter-tabs admin-filter-tabs" aria-label="Filter reports by status">
+    <a class="{% if not status %}selected{% endif %}" href="{{ url_for('admin_reports') }}" {% if not status %}aria-current="page"{% endif %}>All</a>
+    <a class="{% if status in ['open', 'pending'] %}selected{% endif %}" href="{{ url_for('admin_reports', status='open') }}" {% if status in ['open', 'pending'] %}aria-current="page"{% endif %}>Under review</a>
+    <a class="{% if status == 'resolved' %}selected{% endif %}" href="{{ url_for('admin_reports', status='resolved') }}" {% if status == 'resolved' %}aria-current="page"{% endif %}>Resolved</a>
+    <a class="{% if status == 'dismissed' %}selected{% endif %}" href="{{ url_for('admin_reports', status='dismissed') }}" {% if status == 'dismissed' %}aria-current="page"{% endif %}>Dismissed</a>
+  </nav>
+  {% if reports %}
+    <div class="admin-record-list">
+      {% for report in reports %}
+        <article class="admin-record-card admin-report-card">
+          <div class="admin-record-primary">
+            <div class="admin-record-heading">
+              <h2>{{ report_reasons.get(report["reason"], report["reason"]) }}</h2>
+              <span class="admin-status-badge report-{{ report['status'] }}">{{ "Under Review" if report["status"] in ["open", "pending"] else report["status"]|title }}</span>
+            </div>
+            <p class="admin-record-meta">Report #{{ report["id"] }} · {{ report["created_at"] or "Date unavailable" }} · Reported by {{ report["reporter_name"] or report["reporter_username"] }} (@{{ report["reporter_username"] }})</p>
+            {% if report["explanation"] %}<p class="admin-report-explanation">{{ report["explanation"] }}</p>{% endif %}
+            <section class="admin-reported-listing" aria-label="Reported listing details">
+              <div class="admin-record-heading">
+                <h3>{{ report["listing_title"] }}</h3>
+                <span class="admin-status-badge listing-{{ report['listing_status'] }}">{{ "Archived" if report["listing_status"] == "removed" else report["listing_status"]|title }}</span>
+              </div>
+              <p>{{ report["listing_type"]|title }} · {{ report["category"] }} · {{ report["price_cents"]|money }}{% if report["listing_type"] == "product" %} · Stock {{ report["stock"] }}{% endif %}</p>
+              <p>Seller: {{ report["seller_name"] or report["seller_username"] }} (@{{ report["seller_username"] }}) · {{ report["seller_report_count"] }} total listing reports</p>
+              {% if report["description"] %}<p class="admin-report-description">{{ report["description"] }}</p>{% endif %}
+              <a class="text-link" href="{{ url_for('admin_users', q=report['seller_username']) }}">Review seller account and report history →</a>
+              {% if report["listing_status"] != "removed" %}<a class="text-link" href="{{ url_for('listing_detail', listing_id=report['listing_id']) }}">Inspect listing →</a>{% endif %}
+            </section>
+            {% if report["resolver_username"] %}<p class="admin-record-meta">Processed by @{{ report["resolver_username"] }}{% if report["resolved_at"] %} · {{ report["resolved_at"] }}{% endif %}</p>{% endif %}
+            {% if report["resolution_details"] %}<p class="admin-resolution-details"><strong>Resolution:</strong> {{ report["resolution_details"] }}</p>{% endif %}
+          </div>
+          {% if report["status"] in ["open", "pending"] %}
+            <form class="admin-record-actions admin-report-actions" method="post" action="{{ url_for('resolve_report', report_id=report['id']) }}">
+              {{ resolve_report_form.hidden_tag() }}
+              <input type="hidden" name="status" value="{{ status }}">
+              <input type="hidden" name="page" value="{{ page }}">
+              <label for="resolution-details-{{ report['id'] }}">Resolution details <span>(optional)</span>
+                <textarea class="input" id="resolution-details-{{ report['id'] }}" name="resolution_details" rows="3" maxlength="2000" placeholder="Record the moderation decision"></textarea>
+              </label>
+              <button class="primary-button" type="submit" data-confirm="Mark this report as resolved?">Mark resolved</button>
+              <button class="secondary-button admin-destructive-action" type="submit" formaction="{{ url_for('dismiss_report', report_id=report['id']) }}" data-confirm="Dismiss this report?">Dismiss report</button>
+              {% if report["listing_status"] != "removed" %}
+                <button class="secondary-button admin-destructive-action" type="submit" formaction="{{ url_for('archive_reported_listing', report_id=report['id']) }}" data-confirm="Archive this listing and resolve the report? Existing transaction history will be preserved.">Archive listing &amp; resolve</button>
+              {% endif %}
+            </form>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+    {% if total_pages > 1 %}
+      <nav class="admin-pagination" aria-label="Report pages">
+        <span>Page {{ page }} of {{ total_pages }} · {{ total_reports }} reports</span>
+        <div>
+          {% if page > 1 %}<a class="secondary-action" href="{{ url_for('admin_reports', status=status, page=page - 1) }}">Previous</a>{% endif %}
+          {% if page < total_pages %}<a class="secondary-action" href="{{ url_for('admin_reports', status=status, page=page + 1) }}">Next</a>{% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state compact-empty"><h2>No reports found</h2><p>There are no reports in this view.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

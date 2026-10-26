@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Admin · Student registrations · DangalBasket{% endblock %}
+{% block content %}
+<section class="management-page admin-page admin-registrations-page">
+  <header class="admin-page-header">
+    <div>
+      <a class="back-link" href="{{ url_for('admin_dashboard') }}">← Admin dashboard</a>
+      <h1>Student registrations</h1>
+      <p>Review the applicant details and submitted registration documents before making a decision.</p>
+    </div>
+    <span class="admin-result-count">{{ total_registrations }} pending · {{ total_overdue }} overdue</span>
+  </header>
+  {% if registrations %}
+    <div class="admin-record-list">
+      {% for student in registrations %}
+        <article class="admin-record-card registration-row">
+          <div class="admin-record-primary">
+            <div class="admin-record-heading">
+              <h2>{{ student["full_name"] or student["username"] or "Unnamed applicant" }}</h2>
+              <span class="admin-status-badge approval-pending">Pending</span>
+            </div>
+            <p>@{{ student["username"] or "unknown" }} · {{ student["email"] or "No email provided" }}</p>
+            <small>Applicant #{{ student["id"] }} · Submitted {{ student["approval_requested_at"] or "date unavailable" }}</small>
+            {% if student["review_overdue"] %}
+              <span class="admin-status-badge approval-rejected">Overdue · review needed</span>
+            {% else %}
+              <small>Review expected within 48 hours</small>
+            {% endif %}
+            {% if documents_by_user.get(student["id"]) %}
+              <div class="registration-documents">
+                {% for document in documents_by_user[student["id"]] %}
+                  <a class="certificate-preview-link" href="{{ url_for('admin_registration_document', user_id=student['id'], document_id=document['id']) }}" target="_blank" rel="noopener">
+                    <img class="certificate-preview" src="{{ url_for('admin_registration_document', user_id=student['id'], document_id=document['id']) }}" alt="Registration document {{ loop.index }} preview for {{ student['full_name'] or student['username'] }}">
+                    <span>Open document {{ loop.index }} in a new tab <span aria-hidden="true">↗</span></span>
+                  </a>
+                {% endfor %}
+              </div>
+            {% elif student["certificate_filename"] %}
+              <a class="certificate-preview-link" href="{{ url_for('admin_registration_certificate', user_id=student['id']) }}" target="_blank" rel="noopener">
+                <img class="certificate-preview" src="{{ url_for('admin_registration_certificate', user_id=student['id']) }}" alt="Enrollment certificate preview for {{ student['full_name'] or student['username'] }}">
+                <span>Open full certificate in a new tab <span aria-hidden="true">↗</span></span>
+              </a>
+            {% else %}
+              <p class="admin-inline-error" role="status">No certificate image was saved. Verify the application before deciding.</p>
+            {% endif %}
+          </div>
+          <div class="admin-record-actions registration-actions">
+            <form method="post" action="{{ url_for('approve_student_registration', user_id=student['id']) }}" data-confirm="Approve this student registration?">
+              {{ registration_decision_form.hidden_tag() }}
+              <button class="primary-button" type="submit">Approve</button>
+            </form>
+            <button class="secondary-button admin-destructive-action" type="button" data-dialog-open="reject-registration-{{ student['id'] }}">Reject</button>
+          </div>
+          <dialog class="admin-dialog" id="reject-registration-{{ student['id'] }}" aria-labelledby="reject-registration-title-{{ student['id'] }}">
+            <form method="post" action="{{ url_for('reject_student_registration', user_id=student['id']) }}">
+              {{ registration_decision_form.hidden_tag() }}
+              <h2 id="reject-registration-title-{{ student['id'] }}">Reject registration</h2>
+              <p>Reject the request from @{{ student["username"] }}? An optional reason will be recorded in the administrator audit history.</p>
+              <label for="registration-reason-{{ student['id'] }}">Reason (optional)</label>
+              <textarea class="input" id="registration-reason-{{ student['id'] }}" name="reason" rows="3" maxlength="500"></textarea>
+              <div class="admin-dialog-actions">
+                <button class="secondary-action" type="button" data-dialog-close>Cancel</button>
+                <button class="secondary-button admin-destructive-action" type="submit">Confirm rejection</button>
+              </div>
+            </form>
+          </dialog>
+        </article>
+      {% endfor %}
+    </div>
+    {% if total_pages > 1 %}
+      <nav class="admin-pagination" aria-label="Registration pages">
+        <span>Page {{ page }} of {{ total_pages }} · {{ total_registrations }} pending</span>
+        <div>
+          {% if page > 1 %}<a class="secondary-action" href="{{ url_for('admin_registrations', page=page - 1) }}">Previous</a>{% endif %}
+          {% if page < total_pages %}<a class="secondary-action" href="{{ url_for('admin_registrations', page=page + 1) }}">Next</a>{% endif %}
+        </div>
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state compact-empty"><h2>No registrations to review</h2><p>New student requests will appear here when submitted.</p></div>
+  {% endif %}
+</section>
+{% endblock %}
