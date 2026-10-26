@@ -10,10 +10,6 @@ class AccountSeedError(Exception):
     """Raised when account-seed input is unsafe or incompatible."""
 
 
-def _readonly_connection(path):
-    return sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True)
-
-
 def _schema_signature(connection):
     table = connection.execute(
         "SELECT sql FROM sqlite_master "
@@ -54,18 +50,11 @@ def _schema_signature(connection):
         )
     )
 
-    sql = " ".join(table[0].split()).casefold()
-    required = (
-        "primary key",
-        "collate nocase",
-        "check (approval_status in",
-    )
-    if not all(fragment in sql for fragment in required):
-        raise AccountSeedError(
-            "Users table is missing required schema constraints."
-        )
+    # Include table constraints in the signature so we don't silently
+    # accept a table with different username or approval-status rules.
+    normalized_sql = " ".join(table[0].split()).casefold()
 
-    return column_signature, foreign_key_signature
+    return column_signature, foreign_key_signature, normalized_sql
 
 
 def _check_database(connection):
@@ -102,9 +91,7 @@ def _conflict_summary(source_rows, target_rows, columns):
         for column in unique_columns:
             value = row[column]
             if value is not None:
-                target_unique[column].setdefault(
-                    value.casefold(), row["id"]
-                )
+                target_unique[column].setdefault(value.casefold(), row["id"])
 
     already_present = 0
     missing_rows = []
@@ -182,8 +169,22 @@ def recover_missing_accounts(seed_path, database_path, apply=False):
         if seed_tables != {"users"}:
             raise AccountSeedError("Seed must contain only the users table.")
 
-        if _schema_signature(seed) != _schema_signature(target):
-            raise AccountSeedError("Account seed schema does not match the app.")
+        seed_signature = _schema_signature(seed)
+        target_signature = _schema_signature(target)
+
+        if seed_signature != target_signature:
+            seed_columns, seed_fks, seed_sql = seed_signature
+            target_columns, target_fks, target_sql = target_signature
+
+            # Diagnostic details only; never log account values or hashes.
+            raise AccountSeedError(
+                "Account seed schema mismatch: "
+                f"seed columns={len(seed_columns)}, "
+                f"app columns={len(target_columns)}; "
+                f"seed foreign keys={len(seed_fks)}, "
+                f"app foreign keys={len(target_fks)}; "
+                f"table definitions match={seed_sql == target_sql}."
+            )
 
         columns, source_rows = _read_users(seed)
         _check_database(seed)
